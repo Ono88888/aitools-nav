@@ -40,7 +40,7 @@ function ToolCard({ tool }: { tool: Tool }) {
 
 export default async function ToolsPage() {
   const tools = await getAllTools()
-  const categories = [...new Set(tools.flatMap(t => t.category))].filter(Boolean)
+  const categories = Array.from(new Set(tools.flatMap(t => t.category))).filter(Boolean)
 
   return (
     <div className="max-w-content mx-auto px-4 py-8">
