@@ -1,0 +1,71 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sans: 'DM Sans', system-ui, sans-serif;
+  --font-serif: 'Noto Serif SC', Georgia, serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+@layer base {
+  html { scroll-behavior: smooth; }
+
+  body {
+    @apply bg-surface text-ink antialiased;
+    font-family: var(--font-sans);
+  }
+
+  /* 评分条动画 */
+  .score-bar-fill {
+    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* FAQ 展开动画 */
+  details > summary { list-style: none; }
+  details > summary::-webkit-details-marker { display: none; }
+}
+
+@layer components {
+  /* 联盟链接按钮 */
+  .btn-affiliate {
+    @apply inline-flex items-center gap-2 bg-brand text-white px-5 py-2.5 rounded-lg
+           font-medium text-sm transition-all hover:bg-brand-dark hover:-translate-y-0.5
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand;
+  }
+
+  /* 次要按钮 */
+  .btn-secondary {
+    @apply inline-flex items-center gap-2 border border-black/10 text-ink-2 px-5 py-2.5
+           rounded-lg font-medium text-sm transition-colors hover:bg-surface-2
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand;
+  }
+
+  /* 信息卡片 */
+  .info-card {
+    @apply bg-surface-2 border border-black/[0.06] rounded-xl p-4;
+  }
+
+  /* 工具标签 */
+  .tool-tag {
+    @apply text-xs font-medium px-2.5 py-0.5 rounded-full border border-black/[0.08]
+           bg-surface-2 text-ink-2;
+  }
+  .tool-tag-blue {
+    @apply bg-blue-50 text-blue-700 border-blue-200;
+  }
+  .tool-tag-green {
+    @apply bg-emerald-50 text-emerald-700 border-emerald-200;
+  }
+
+  /* 章节标题（带顶部分割线） */
+  .section-heading {
+    @apply font-serif text-xl font-semibold text-ink mt-10 mb-4
+           pt-2 border-t-2 border-surface-3 first:mt-0 first:border-t-0 first:pt-0;
+  }
+
+  /* 价格表格比较符号 */
+  .cmp-yes  { @apply text-emerald-600 font-semibold; }
+  .cmp-no   { @apply text-ink-4; }
+  .cmp-part { @apply text-amber-600 font-medium; }
+}
