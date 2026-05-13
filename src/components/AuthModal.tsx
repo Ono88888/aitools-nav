@@ -54,7 +54,6 @@ export default function AuthModal({ onClose, onSuccess, defaultTab = 'login' }: 
   }
 
   return (
-    {/* 遮罩层 */}
     <div style={{
       position: 'fixed', inset: 0,
       backgroundColor: 'rgba(0,0,0,0.6)',
