@@ -3,10 +3,8 @@
 import { useEffect, useState, useRef, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-
-// ────────────────────────────────────────────────────────────
-// 数据层：完整工具组合（6大场景，每场景3套方案）
-// ────────────────────────────────────────────────────────────
+import WukongLogo from '@/components/WukongLogo'
+import { getCombos, matchScene, SCENE_LABELS } from '@/lib/combos-data'
 
 const TIER_META: Record<string, { label: string; accent: string; tagBg: string; tagColor: string; darkTagBg: string }> = {
   free: { label: '全免费方案', accent: '#1D9E75', tagBg: '#E1F5EE', tagColor: '#085041', darkTagBg: '#085041' },
@@ -14,7 +12,7 @@ const TIER_META: Record<string, { label: string; accent: string; tagBg: string; 
   pro:  { label: '创意旗舰',   accent: '#7C3AED', tagBg: '#EDE9FE', tagColor: '#4C1D95', darkTagBg: '#3C3489' },
 }
 
-const DB: Record<string, any[]> = {
+const DB_PLACEHOLDER: Record<string, any[]> = {
 
   // ── 短视频 ──────────────────────────────────────────────
   video: [
@@ -423,17 +421,7 @@ const DB: Record<string, any[]> = {
   ],
 }
 
-// ── 场景匹配 ─────────────────────────────────────────────
-function matchScene(q: string): string {
-  const lower = q.toLowerCase()
-  if (/视频|剪辑|配音|短片|口播|tiktok|抖音|youtube|vlog/.test(lower)) return 'video'
-  if (/公众号|写文章|写稿|排版|微信|自媒体文章/.test(lower)) return 'wechat'
-  if (/电商|亚马逊|跨境|选品|shopify|独立站/.test(lower)) return 'ecommerce'
-  if (/开发|写代码|编程|上线|app|网站|程序|软件/.test(lower)) return 'dev'
-  if (/绘画|生图|ai图|画图|midjourney|配图|插画/.test(lower)) return 'painting'
-  if (/播客|podcast|录音|音频/.test(lower)) return 'podcast'
-  return 'video' // 默认最热场景
-}
+// ── 场景匹配（从 combos-data.ts 导入）─────────────────────
 
 // ── 加载动效 ─────────────────────────────────────────────
 function WukongLoader({ query }: { query: string }) {
@@ -497,19 +485,43 @@ function ToolChip({ tool, accent }: { tool: any; accent: string }) {
   )
 }
 
+// ── 方案编号配色 ─────────────────────────────────────────
+const PLAN_STYLES = [
+  { numBg: '#D97706', numColor: '#fff',    border: (accent: string) => `2px solid ${accent}` },
+  { numBg: '#1D6FB8', numColor: '#fff',    border: () => '2px solid #1D6FB8' },
+  { numBg: '#6D28D9', numColor: '#fff',    border: () => '2px solid #6D28D9' },
+]
+
 // ── 组合卡片 ─────────────────────────────────────────────
-function ComboCard({ combo, defaultOpen }: { combo: any; defaultOpen: boolean }) {
+function ComboCard({ combo, defaultOpen, index }: { combo: any; defaultOpen: boolean; index: number }) {
   const [open, setOpen] = useState(defaultOpen)
   const m = TIER_META[combo.tier] || TIER_META.mid
+  const ps = PLAN_STYLES[index] || PLAN_STYLES[2]
+  const planLabel = ['方案一', '方案二', '方案三'][index] || `方案${index + 1}`
+  const borderStyle = combo.isRec ? `2px solid ${m.accent}` : ps.border(m.accent)
+
   return (
-    <div style={{ background: 'var(--color-background-primary)', border: combo.isRec ? `2px solid ${m.accent}` : '0.5px solid var(--color-border-tertiary)', borderRadius: '16px', overflow: 'visible', position: 'relative' }}>
+    <div style={{ background: 'var(--color-background-primary)', border: borderStyle, borderRadius: '16px', overflow: 'visible', position: 'relative' }}>
+
+      {/* 方案编号标签（左上角） */}
+      <div style={{
+        position: 'absolute', top: '-12px', left: '16px',
+        background: ps.numBg, color: ps.numColor,
+        fontSize: '11px', fontWeight: 600,
+        padding: '2px 10px', borderRadius: '20px',
+        zIndex: 2, letterSpacing: '.02em',
+        boxShadow: '0 1px 4px rgba(0,0,0,.12)',
+      }}>
+        {planLabel}
+      </div>
+
       {combo.isRec && (
         <div style={{ position: 'absolute', top: '-1px', right: '20px', background: m.accent, color: '#fff', fontSize: '11px', fontWeight: 500, padding: '4px 14px 7px', borderRadius: '0 0 12px 12px', display: 'flex', alignItems: 'center', gap: '4px', zIndex: 2 }}>
           ⭐ 编辑推荐
         </div>
       )}
       {/* 头部 */}
-      <div onClick={() => setOpen(!open)} style={{ padding: combo.isRec ? '1.4rem 1.2rem 1rem' : '1rem 1.2rem', background: combo.isRec ? (combo.tier === 'mid' ? '#FFFBF2' : combo.tier === 'pro' ? '#F5F3FF' : '#F0FDF9') : 'transparent', borderRadius: open ? '14px 14px 0 0' : '14px', borderBottom: open ? '0.5px solid var(--color-border-tertiary)' : 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }}>
+      <div onClick={() => setOpen(!open)} style={{ padding: '1.5rem 1.2rem 1rem', background: combo.isRec ? (combo.tier === 'mid' ? '#FFFBF2' : combo.tier === 'pro' ? '#F5F3FF' : '#F0FDF9') : 'transparent', borderRadius: open ? '14px 14px 0 0' : '14px', borderBottom: open ? '0.5px solid var(--color-border-tertiary)' : 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }}>
         <div style={{ flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '7px', marginBottom: '3px' }}>
             <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--color-text-primary)' }}>{combo.name}</span>
@@ -600,17 +612,43 @@ function RecommendContent() {
   const params = useSearchParams()
   const router = useRouter()
   const query = params.get('q') || ''
-  const [loading, setLoading] = useState(true)
-  const [combos, setCombos]   = useState<any[]>([])
-  const [newQ, setNewQ]       = useState(query)
+  const [loading, setLoading]         = useState(true)
+  const [combos, setCombos]           = useState<any[]>([])
+  const [sceneLabels, setSceneLabels] = useState<string[]>([])
+  const [newQ, setNewQ]               = useState(query)
   const timer = useRef<ReturnType<typeof setTimeout>>()
 
   useEffect(() => {
+    if (!query) return
     setLoading(true)
-    timer.current = setTimeout(() => {
-      setCombos(DB[matchScene(query)] || DB.video)
-      setLoading(false)
-    }, 2600)
+    setCombos([])
+    setSceneLabels([])
+
+    const MIN_MS = 2000
+    const start = Date.now()
+
+    fetch('/api/match', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        const delay = Math.max(0, MIN_MS - (Date.now() - start))
+        timer.current = setTimeout(() => {
+          setCombos(data.combos ?? [])
+          setSceneLabels(data.sceneLabels ?? [])
+          setLoading(false)
+        }, delay)
+      })
+      .catch(() => {
+        const delay = Math.max(0, MIN_MS - (Date.now() - start))
+        timer.current = setTimeout(() => {
+          setCombos(getCombos(matchScene(query)))
+          setLoading(false)
+        }, delay)
+      })
+
     return () => clearTimeout(timer.current)
   }, [query])
 
@@ -629,8 +667,11 @@ function RecommendContent() {
       {/* 顶部导航 */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 0', marginBottom: '8px', borderBottom: '0.5px solid var(--color-border-tertiary)' }}>
         <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '6px', textDecoration: 'none', flexShrink: 0 }}>
-          <span style={{ fontSize: '22px' }}>🐒</span>
-          <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--color-text-primary)', fontFamily: 'var(--font-serif)' }}>悟空AI</span>
+          <WukongLogo size={28} />
+          <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
+            <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--color-text-primary)', fontFamily: 'var(--font-serif)' }}>GO悟空</span>
+            <span style={{ fontSize: '10px', color: 'var(--color-text-tertiary)' }}>GoWuKong.co</span>
+          </div>
         </Link>
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', background: 'var(--color-background-secondary)', border: '0.5px solid var(--color-border-secondary)', borderRadius: '20px', padding: '6px 14px', gap: '8px' }}>
           <input value={newQ} onChange={e => setNewQ(e.target.value)} onKeyDown={e => e.key === 'Enter' && go()} style={{ flex: 1, border: 'none', background: 'transparent', fontSize: '13px', color: 'var(--color-text-primary)', outline: 'none', fontFamily: 'var(--font-sans)' }} />
@@ -643,11 +684,19 @@ function RecommendContent() {
         <>
           <div style={{ padding: '14px 0 10px' }}>
             <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
-              根据「<strong style={{ color: 'var(--color-text-primary)' }}>{query.length > 30 ? query.slice(0, 30) + '...' : query}</strong>」，为你匹配了 {combos.length} 套 AI 工具组合：
+              根据「<strong style={{ color: 'var(--color-text-primary)' }}>{query.length > 30 ? query.slice(0, 30) + '...' : query}</strong>」识别为
+              {sceneLabels.length > 0 && (
+                <span style={{ display: 'inline-flex', gap: '4px', margin: '0 4px' }}>
+                  {sceneLabels.map(l => (
+                    <span key={l} style={{ fontSize: '11px', fontWeight: 500, background: '#FEF3C7', color: '#92400E', padding: '1px 7px', borderRadius: '4px' }}>{l}</span>
+                  ))}
+                </span>
+              )}
+              场景，为你匹配了 {combos.length} 套 AI 工具组合：
             </p>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            {combos.map((c, i) => <ComboCard key={c.id} combo={c} defaultOpen={i === 0} />)}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '22px', marginTop: '8px' }}>
+            {combos.map((c, i) => <ComboCard key={c.id} combo={c} defaultOpen={i === 0} index={i} />)}
           </div>
           {combos.length >= 2 && <PriceBars combos={combos} />}
           <div style={{ marginTop: '20px', padding: '.9rem 1rem', textAlign: 'center', background: 'var(--color-background-secondary)', borderRadius: '12px', border: '0.5px solid var(--color-border-tertiary)' }}>

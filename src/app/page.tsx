@@ -1,10 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import AuthModal from '@/components/AuthModal'
+import WukongLogo from '@/components/WukongLogo'
 
-const MAX_CHARS = 200
+const MAX_CHARS = 50
 
 // 热门标签（按搜索量排序，带热度标识）
 const HOT_TAGS = [
@@ -25,14 +27,46 @@ const RECENT_EXAMPLES = [
   '做微信社群运营，内容自动生成和发布',
 ]
 
+// ── 搜索建议词（本地预设，0网络请求）────────────────────────
+const SUGGESTIONS: Record<string, string> = {
+  '直播': '我想做直播带货，需要AI话术生成、虚拟主播和选品工具',
+  '视频': '做自媒体短视频，需要自动写脚本、AI配音、自动剪辑成片',
+  '公众号': '运营公众号，需要AI写文章、自动配图、一键排版发布',
+  '电商': '做跨境电商，需要产品描述翻译、AI客服、数据选品',
+  '代码': '独立开发产品，需要AI写代码、自动测试、快速部署上线',
+  '绘画': '用AI绘画接单变现，需要高质量生图和商业授权工具',
+  'PPT': '做商务PPT演示，需要AI一键生成设计精美的幻灯片',
+  '音乐': '用AI创作音乐歌曲，需要自动作曲配音工具',
+  '播客': '做播客节目，需要录音降噪、AI转写字幕、多平台发布',
+  '写作': '用AI辅助写文章，需要长文生成、改写润色工具',
+}
+
+// 防刷间隔：两次搜索最少间隔5秒
+const SEARCH_COOLDOWN_MS = 5000
+
 export default function HomePage() {
-  const [query, setQuery]     = useState('')
-  const [focused, setFocused] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [recent, setRecent]   = useState<string[]>([])
+  const [query, setQuery]           = useState('')
+  const [focused, setFocused]       = useState(false)
+  const [loading, setLoading]       = useState(false)
+  const [recent, setRecent]         = useState<string[]>([])
+  const [suggestion, setSuggestion] = useState('')
+  const [user, setUser]             = useState<{ email: string; phone: string } | null>(null)
+  const [showAuth, setShowAuth]     = useState(false)
+  const [authTab, setAuthTab]       = useState<'login'|'register'>('login')
+  const [cooldown, setCooldown]     = useState(0)   // 剩余冷却秒数
+  const [dailyMsg, setDailyMsg]     = useState('')  // 次数提示
+  const lastSearchRef               = useRef<number>(0)
+  const cooldownTimer               = useRef<ReturnType<typeof setInterval>>()
   const router = useRouter()
   const chars = query.length
   const nearLimit = chars > MAX_CHARS * 0.8
+
+  // 获取登录状态
+  useEffect(() => {
+    fetch('/api/auth/me').then(r => r.json()).then(d => {
+      if (d.user) setUser(d.user)
+    }).catch(() => {})
+  }, [])
 
   useEffect(() => {
     try {
@@ -41,24 +75,53 @@ export default function HomePage() {
     } catch {}
   }, [])
 
+  useEffect(() => {
+    if (!query.trim()) { setSuggestion(''); return }
+    const match = Object.entries(SUGGESTIONS).find(([k]) => query.includes(k))
+    setSuggestion(match ? match[1] : '')
+  }, [query])
+
+  // 冷却倒计时
+  function startCooldown() {
+    const end = Date.now() + SEARCH_COOLDOWN_MS
+    lastSearchRef.current = Date.now()
+    clearInterval(cooldownTimer.current)
+    cooldownTimer.current = setInterval(() => {
+      const remaining = Math.ceil((end - Date.now()) / 1000)
+      if (remaining <= 0) {
+        setCooldown(0)
+        clearInterval(cooldownTimer.current)
+      } else {
+        setCooldown(remaining)
+      }
+    }, 200)
+  }
+
   function handleSearch() {
     const q = query.trim()
     if (!q || loading) return
-    // 保存最近搜索
+    // 冷却检查
+    if (cooldown > 0) return
+    if (Date.now() - lastSearchRef.current < SEARCH_COOLDOWN_MS) return
     try {
       const prev: string[] = JSON.parse(localStorage.getItem('wk_recent') || '[]')
-      const next = [q, ...prev.filter(x => x !== q)].slice(0, 5)
-      localStorage.setItem('wk_recent', JSON.stringify(next))
+      localStorage.setItem('wk_recent', JSON.stringify([q, ...prev.filter(x => x !== q)].slice(0, 5)))
     } catch {}
     setLoading(true)
+    startCooldown()
     router.push(`/recommend?q=${encodeURIComponent(q)}`)
   }
 
   function handleKey(e: React.KeyboardEvent) {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSearch() }
+    if (e.key === 'Tab' && suggestion) { e.preventDefault(); setQuery(suggestion); setSuggestion('') }
   }
 
-  const canSearch = query.trim().length > 0 && chars <= MAX_CHARS && !loading
+  function handleLogout() {
+    fetch('/api/auth/me', { method: 'DELETE' }).then(() => setUser(null))
+  }
+
+  const canSearch = query.trim().length > 0 && chars <= MAX_CHARS && !loading && cooldown === 0
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--color-background-tertiary)' }}>
@@ -66,18 +129,34 @@ export default function HomePage() {
       {/* ── 顶部导航 ── */}
       <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 24px', background: 'var(--color-background-tertiary)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '22px' }}>🐒</span>
-          <span style={{ fontSize: '15px', fontWeight: 500, color: 'var(--color-text-primary)', fontFamily: 'var(--font-serif)', letterSpacing: '.01em' }}>悟空AI</span>
+          <WukongLogo size={32} />
+          <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
+            <span style={{ fontSize: '15px', fontWeight: 500, color: 'var(--color-text-primary)', fontFamily: 'var(--font-serif)', letterSpacing: '.01em' }}>GO悟空</span>
+            <span style={{ fontSize: '10px', color: 'var(--color-text-tertiary)', letterSpacing: '.02em' }}>GoWuKong.co</span>
+          </div>
         </div>
-        <div style={{ display: 'flex', gap: '2px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
           {[
             { href: '/tools/',    label: '全部工具' },
             { href: '/categories/', label: '分类' },
             { href: '/compare/',  label: '工具对比' },
-            { href: '/weekly/',   label: 'AI周报' },
           ].map(item => (
             <Link key={item.href} href={item.href} style={{ fontSize: '13px', color: 'var(--color-text-secondary)', padding: '6px 12px', borderRadius: '8px', textDecoration: 'none' }}>{item.label}</Link>
           ))}
+          {user ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: '4px' }}>
+              <span style={{ fontSize: '12px', color: 'var(--color-text-tertiary)', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                👤 {user.email || user.phone}
+              </span>
+              <button onClick={handleLogout} style={{ fontSize: '12px', color: 'var(--color-text-tertiary)', background: 'none', border: '0.5px solid var(--color-border-tertiary)', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontFamily: 'var(--font-sans)' }}>
+                退出
+              </button>
+            </div>
+          ) : (
+            <button onClick={() => { setAuthTab('login'); setShowAuth(true) }} style={{ marginLeft: '4px', fontSize: '13px', color: '#D97706', background: '#FFFBF2', border: '1px solid #D97706', borderRadius: '8px', padding: '6px 12px', cursor: 'pointer', fontFamily: 'var(--font-sans)', fontWeight: 500 }}>
+              登录
+            </button>
+          )}
         </div>
       </nav>
 
@@ -86,9 +165,11 @@ export default function HomePage() {
 
         {/* 悟空 Logo */}
         <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-          <div style={{ fontSize: '80px', lineHeight: 1, marginBottom: '18px', display: 'inline-block', animation: 'wkFloat 3.5s ease-in-out infinite' }}>🐒</div>
+          <div style={{ marginBottom: '18px', display: 'inline-block', animation: 'wkFloat 3.5s ease-in-out infinite' }}>
+            <WukongLogo size={80} />
+          </div>
           <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: 'clamp(26px,5vw,40px)', fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: '10px', letterSpacing: '-.02em', lineHeight: 1.2 }}>
-            悟空 AI 导航
+            GO悟空 AI 导航
           </h1>
           <p style={{ fontSize: '15px', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
             告诉我你想做什么，我帮你找到最佳 AI 工具组合
@@ -99,7 +180,7 @@ export default function HomePage() {
         <div style={{ width: '100%', maxWidth: '680px', marginBottom: '20px' }}>
           <div style={{
             background: 'var(--color-background-primary)',
-            border: focused ? '2px solid #D97706' : '1.5px solid var(--color-border-secondary)',
+            border: focused ? '2px solid #D97706' : '1.5px solid #AAAAAA',
             borderRadius: '20px',
             padding: '16px 18px 12px',
             transition: 'border-color .2s, box-shadow .2s',
@@ -107,7 +188,7 @@ export default function HomePage() {
           }}>
             <textarea
               value={query}
-              onChange={e => { if (e.target.value.length <= MAX_CHARS + 10) setQuery(e.target.value) }}
+              onChange={e => { if (e.target.value.length <= MAX_CHARS + 5) setQuery(e.target.value) }}
               onKeyDown={handleKey}
               onFocus={() => setFocused(true)}
               onBlur={() => setFocused(false)}
@@ -150,7 +231,9 @@ export default function HomePage() {
                 >
                   {loading
                     ? <><span style={{ animation: 'wkSpin .6s linear infinite', display: 'inline-block' }}>🌀</span>&nbsp;寻找中...</>
-                    : <>🔥 悟空帮你找</>
+                    : cooldown > 0
+                      ? <>⏳ 请等待 {cooldown}s</>
+                      : <>🔥 悟空帮你找</>
                   }
                 </button>
               </div>
@@ -160,6 +243,23 @@ export default function HomePage() {
             <p style={{ fontSize: '12px', color: '#E24B4A', marginTop: '6px', paddingLeft: '4px' }}>
               超出字数限制 {chars - MAX_CHARS} 字，请精简描述
             </p>
+          )}
+
+          {/* ── 智能建议词（本地匹配，0延迟）── */}
+          {suggestion && suggestion !== query.trim() && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: '8px',
+              marginTop: '8px', padding: '8px 14px',
+              background: 'var(--color-background-secondary)',
+              border: '0.5px solid var(--color-border-tertiary)',
+              borderRadius: '10px', cursor: 'pointer',
+            }}
+              onClick={() => { setQuery(suggestion); setSuggestion('') }}
+            >
+              <span style={{ fontSize: '11px', color: 'var(--color-text-tertiary)', flexShrink: 0 }}>💡 你是否想做：</span>
+              <span style={{ fontSize: '12px', color: '#D97706', flex: 1, lineHeight: 1.5 }}>{suggestion}</span>
+              <span style={{ fontSize: '10px', color: 'var(--color-text-tertiary)', flexShrink: 0 }}>点击填入 / Tab</span>
+            </div>
           )}
         </div>
 
@@ -256,7 +356,7 @@ export default function HomePage() {
 
       {/* ── 页脚 ── */}
       <footer style={{ textAlign: 'center', padding: '16px', fontSize: '12px', color: 'var(--color-text-tertiary)', borderTop: '0.5px solid var(--color-border-tertiary)', background: 'var(--color-background-tertiary)' }}>
-        © 2025 悟空AI导航 · gowukong.co ·{' '}
+        © 2025 GO悟空 · gowukong.co ·{' '}
         {[
           { href: '/affiliate-disclosure/', label: '联盟声明' },
           { href: '/about/', label: '关于' },
@@ -269,6 +369,25 @@ export default function HomePage() {
           </span>
         ))}
       </footer>
+
+      {/* 次数提示 */}
+      {dailyMsg && (
+        <div style={{ position: 'fixed', bottom: '24px', left: '50%', transform: 'translateX(-50%)', background: '#1a1a1a', color: '#fff', fontSize: '13px', padding: '10px 20px', borderRadius: '20px', zIndex: 100, display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {dailyMsg}
+          <button onClick={() => { setDailyMsg(''); setAuthTab('register'); setShowAuth(true) }} style={{ background: '#D97706', color: '#fff', border: 'none', borderRadius: '6px', padding: '4px 10px', fontSize: '12px', cursor: 'pointer', fontFamily: 'var(--font-sans)', fontWeight: 500 }}>
+            注册
+          </button>
+        </div>
+      )}
+
+      {/* 登录/注册弹窗 */}
+      {showAuth && (
+        <AuthModal
+          defaultTab={authTab}
+          onClose={() => setShowAuth(false)}
+          onSuccess={u => { setUser(u); setShowAuth(false) }}
+        />
+      )}
 
       <style>{`
         @keyframes wkFloat {
