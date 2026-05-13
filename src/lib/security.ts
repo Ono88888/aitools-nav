@@ -84,9 +84,9 @@ export function rateLimit(params: {
 
   // 清理过期记录（避免内存泄漏）
   if (memoryStore.size > 10000) {
-    for (const [k, v] of memoryStore.entries()) {
+    Array.from(memoryStore.entries()).forEach(([k, v]) => {
       if (v.resetAt < now) memoryStore.delete(k)
-    }
+    })
   }
 
   return {
