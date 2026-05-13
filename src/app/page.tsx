@@ -61,17 +61,15 @@ export default function HomePage() {
   const chars = query.length
   const nearLimit = chars > MAX_CHARS * 0.8
 
-  // 获取登录状态
-  useEffect(() => {
-    fetch('/api/auth/me').then(r => r.json()).then(d => {
-      if (d.user) setUser(d.user)
-    }).catch(() => {})
-  }, [])
-
   useEffect(() => {
     try {
       const saved = JSON.parse(localStorage.getItem('wk_recent') || '[]')
       setRecent(saved.slice(0, 3))
+    } catch {}
+    // 恢复登录状态
+    try {
+      const savedUser = localStorage.getItem('wk_user')
+      if (savedUser) setUser(JSON.parse(savedUser))
     } catch {}
   }, [])
 
@@ -118,7 +116,9 @@ export default function HomePage() {
   }
 
   function handleLogout() {
-    fetch('/api/auth/me', { method: 'DELETE' }).then(() => setUser(null))
+    setUser(null)
+    // 清除本地存储的登录状态
+    try { localStorage.removeItem('wk_user') } catch {}
   }
 
   const canSearch = query.trim().length > 0 && chars <= MAX_CHARS && !loading && cooldown === 0

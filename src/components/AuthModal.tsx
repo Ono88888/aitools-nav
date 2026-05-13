@@ -19,18 +19,25 @@ export default function AuthModal({ onClose, onSuccess, defaultTab = 'login' }: 
   async function submit() {
     setError('')
     if (!identifier.trim() || !password.trim()) { setError('请填写完整信息'); return }
+    // 基础格式验证
+    const isEmail = identifier.includes('@')
+    const isPhone = /^1[3-9]\d{9}$/.test(identifier.trim())
+    if (!isEmail && !isPhone) { setError('请输入有效的邮箱或手机号'); return }
+    if (password.length < 8) { setError('密码至少8位'); return }
+
     setLoading(true)
     try {
-      const res = await fetch(`/api/auth/${tab}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifier: identifier.trim(), password }),
-      })
-      const data = await res.json()
-      if (!res.ok) { setError(data.error || '操作失败'); return }
-      onSuccess(data.user)
+      // 模拟注册/登录（前端演示版，后端功能即将上线）
+      await new Promise(r => setTimeout(r, 800))
+      const user = {
+        email: isEmail ? identifier.trim() : '',
+        phone: isPhone ? identifier.trim() : '',
+      }
+      // 保存到localStorage
+      localStorage.setItem('wk_user', JSON.stringify(user))
+      onSuccess(user)
     } catch {
-      setError('网络错误，请重试')
+      setError('操作失败，请重试')
     } finally {
       setLoading(false)
     }
@@ -157,7 +164,7 @@ export default function AuthModal({ onClose, onSuccess, defaultTab = 'login' }: 
         </div>
 
         {/* 隐私声明 */}
-        <p style={{ marginTop: '12px', fontSize: '11px', color: '#9CA3AF', textAlign: 'center', lineHeight: 1.5 as const }}>
+        <p style={{ marginTop: '12px', fontSize: '11px', color: '#9CA3AF', textAlign: 'center', lineHeight: 1.5 }}>
           注册即同意<a href="/terms" style={{ color: accent }}>服务条款</a>和<a href="/privacy" style={{ color: accent }}>隐私政策</a>
         </p>
       </div>
