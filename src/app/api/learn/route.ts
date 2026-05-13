@@ -21,7 +21,7 @@ async function analyzeWithDeepSeek(query: string): Promise<{
 } | null> {
   if (!DS_KEY) return null
 
-  const validList = [...VALID_SCENES].join(',')
+  const validList = Array.from(VALID_SCENES).join(',')
 
   try {
     const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
