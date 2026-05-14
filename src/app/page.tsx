@@ -55,8 +55,8 @@ const I18N = {
     btn: '🔥 悟空帮你找',
     btnLoading: '寻找中...',
     enterHint: 'Enter 发送',
-    hotLabel: t.hotLabel,
-    recentLabel: t.recentLabel,
+    hotLabel: '🔥 热门场景',
+    recentLabel: '🕐 最近搜索',
     clearRecent: '清除',
     networkLabel: '工具范围',
     networkOpts: [
@@ -82,7 +82,7 @@ const I18N = {
   },
   en: {
     title: 'GO悟空 AI Nav',
-    subtitle: 'Tell me what you want to do, I'll find the best AI tool combo',
+    subtitle: "Tell me what you want to do, I'll find the best AI tool combo",
     placeholder: 'e.g. I want to make YouTube videos, need script writing, AI voiceover, auto editing...',
     btn: '🔥 Find Tools',
     btnLoading: 'Searching...',
