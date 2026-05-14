@@ -298,6 +298,127 @@ export default function ToolDetailPage({ params }: { params: { slug: string } })
           </div>
         )}
       </div>
+
+      {/* 用户评论区 */}
+      <CommentSection slug={params.slug} toolName={tool.name} />
     </>
+  )
+}
+
+// ── 评论区客户端组件 ─────────────────────────────────────────
+'use client'
+import { useState, useEffect } from 'react'
+
+function CommentSection({ slug, toolName }: { slug: string; toolName: string }) {
+  const [comments, setComments] = useState<any[]>([])
+  const [name, setName]         = useState('')
+  const [text, setText]         = useState('')
+  const [rating, setRating]     = useState(5)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitted, setSubmitted]   = useState(false)
+
+  // 从 localStorage 读取评论（后期可换成数据库）
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(`comments_${slug}`) || '[]')
+      setComments(saved)
+    } catch {}
+  }, [slug])
+
+  function submit() {
+    if (!text.trim()) return
+    setSubmitting(true)
+    const newComment = {
+      id: Date.now(),
+      name: name.trim() || '匿名用户',
+      text: text.trim(),
+      rating,
+      date: new Date().toLocaleDateString('zh-CN'),
+    }
+    const updated = [newComment, ...comments]
+    try {
+      localStorage.setItem(`comments_${slug}`, JSON.stringify(updated.slice(0, 50)))
+    } catch {}
+    setComments(updated)
+    setText('')
+    setName('')
+    setRating(5)
+    setSubmitting(false)
+    setSubmitted(true)
+    setTimeout(() => setSubmitted(false), 3000)
+  }
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '10px 12px', fontSize: '13px',
+    border: '1px solid var(--color-border-secondary)',
+    borderRadius: '10px', background: 'var(--color-background-secondary)',
+    color: 'var(--color-text-primary)', outline: 'none',
+    fontFamily: 'var(--font-sans)', boxSizing: 'border-box',
+  }
+
+  return (
+    <div style={{ marginTop: '36px', paddingTop: '28px', borderTop: '0.5px solid var(--color-border-tertiary)' }}>
+      <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '20px', fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: '20px' }}>
+        用户评价 {comments.length > 0 && <span style={{ fontSize: '14px', fontWeight: 400, color: 'var(--color-text-tertiary)' }}>（{comments.length}条）</span>}
+      </h2>
+
+      {/* 发表评论 */}
+      <div style={{ background: 'var(--color-background-secondary)', borderRadius: '14px', padding: '16px', marginBottom: '20px' }}>
+        <h3 style={{ fontSize: '14px', fontWeight: 500, color: 'var(--color-text-primary)', marginBottom: '12px' }}>写下你的使用体验</h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <input value={name} onChange={e => setName(e.target.value)} placeholder="你的昵称（可选，留空显示匿名）" style={inputStyle} />
+          {/* 评分 */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '13px', color: 'var(--color-text-tertiary)' }}>评分：</span>
+            {[1,2,3,4,5].map(n => (
+              <button key={n} onClick={() => setRating(n)} style={{ fontSize: '22px', background: 'none', border: 'none', cursor: 'pointer', opacity: n <= rating ? 1 : 0.3, transition: 'opacity .15s' }}>★</button>
+            ))}
+            <span style={{ fontSize: '13px', color: '#D97706', fontWeight: 500 }}>{rating}.0</span>
+          </div>
+          <textarea
+            value={text}
+            onChange={e => { if (e.target.value.length <= 500) setText(e.target.value) }}
+            placeholder={`分享你使用 ${toolName} 的真实体验，帮助其他用户做决策...`}
+            rows={3}
+            style={{ ...inputStyle, resize: 'vertical', minHeight: '80px' }}
+          />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '11px', color: 'var(--color-text-tertiary)' }}>{text.length}/500</span>
+            <button
+              onClick={submit}
+              disabled={!text.trim() || submitting}
+              style={{ padding: '8px 20px', background: text.trim() ? '#D97706' : 'var(--color-background-primary)', color: text.trim() ? '#fff' : 'var(--color-text-tertiary)', border: 'none', borderRadius: '10px', fontSize: '13px', fontWeight: 500, cursor: text.trim() ? 'pointer' : 'default', fontFamily: 'var(--font-sans)' }}
+            >
+              {submitted ? '✓ 已发布' : submitting ? '发布中...' : '发布评价'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* 评论列表 */}
+      {comments.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '32px', color: 'var(--color-text-tertiary)', fontSize: '13px' }}>
+          还没有评价，成为第一个评价 {toolName} 的用户 🎉
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {comments.map(c => (
+            <div key={c.id} style={{ padding: '14px 16px', background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#D97706', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 600 }}>
+                    {c.name[0]}
+                  </div>
+                  <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--color-text-primary)' }}>{c.name}</span>
+                  <span style={{ fontSize: '12px', color: '#D97706' }}>{'★'.repeat(c.rating)}{'☆'.repeat(5-c.rating)}</span>
+                </div>
+                <span style={{ fontSize: '11px', color: 'var(--color-text-tertiary)' }}>{c.date}</span>
+              </div>
+              <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', lineHeight: 1.65, margin: 0 }}>{c.text}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }

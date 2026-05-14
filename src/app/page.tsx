@@ -208,44 +208,30 @@ export default function HomePage() {
   const canSearch = query.trim().length > 0 && chars <= MAX_CHARS && !loading && cooldown === 0
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--color-background-tertiary)' }}>
-
-      {/* ── 顶部导航 ── */}
-      <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 24px', background: 'var(--color-background-tertiary)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <WukongLogo size={32} />
-          <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
-            <span style={{ fontSize: '15px', fontWeight: 500, color: 'var(--color-text-primary)', fontFamily: 'var(--font-serif)', letterSpacing: '.01em' }}>GO悟空</span>
-            <span style={{ fontSize: '10px', color: 'var(--color-text-tertiary)', letterSpacing: '.02em' }}>GoWuKong.co</span>
-          </div>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
-          {(lang === 'zh'
-            ? [{ href: '/tools/', label: '全部工具' }, { href: '/compare/', label: '工具对比' }]
-            : [{ href: '/tools/', label: 'All Tools' }, { href: '/compare/', label: 'Compare' }]
-          ).map(item => (
-            <Link key={item.href} href={item.href} style={{ fontSize: '13px', color: 'var(--color-text-secondary)', padding: '6px 12px', borderRadius: '8px', textDecoration: 'none' }}>{item.label}</Link>
-          ))}
-          {/* 语言切换 */}
-          <button onClick={toggleLang} style={{ fontSize: '12px', fontWeight: 500, padding: '5px 10px', borderRadius: '8px', border: '1px solid var(--color-border-secondary)', background: 'var(--color-background-secondary)', color: 'var(--color-text-secondary)', cursor: 'pointer', fontFamily: 'var(--font-sans)', marginLeft: '4px' }}>
-            {t.langBtn}
-          </button>
+    <div style={{ minHeight: '60vh', display: 'flex', flexDirection: 'column' }}>
+      {/* 语言切换浮动按钮 */}
+      <div style={{ position: 'fixed', top: '12px', right: '160px', zIndex: 50 }}>
+        <button onClick={toggleLang} style={{ fontSize: '12px', fontWeight: 500, padding: '4px 10px', borderRadius: '8px', border: '1px solid var(--color-border-secondary)', background: 'var(--color-background-primary)', color: 'var(--color-text-secondary)', cursor: 'pointer', fontFamily: 'var(--font-sans)' }}>
+          {t.langBtn}
+        </button>
+      </div>
+      {/* 登录状态浮动 */}
+      <div style={{ position: 'fixed', top: '10px', right: '10px', zIndex: 50, display: 'flex', alignItems: 'center', gap: '6px' }}>
           {user ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: '4px' }}>
-              <span style={{ fontSize: '12px', color: 'var(--color-text-tertiary)', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <>
+              <span style={{ fontSize: '12px', color: 'var(--color-text-tertiary)', maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 👤 {user.email || user.phone}
               </span>
-              <button onClick={handleLogout} style={{ fontSize: '12px', color: 'var(--color-text-tertiary)', background: 'none', border: '0.5px solid var(--color-border-tertiary)', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontFamily: 'var(--font-sans)' }}>
-                退出
+              <button onClick={handleLogout} style={{ fontSize: '12px', color: 'var(--color-text-tertiary)', background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontFamily: 'var(--font-sans)' }}>
+                {t.logout}
               </button>
-            </div>
+            </>
           ) : (
-            <button onClick={() => { setAuthTab('login'); setShowAuth(true) }} style={{ marginLeft: '4px', fontSize: '13px', color: '#D97706', background: '#FFFBF2', border: '1px solid #D97706', borderRadius: '8px', padding: '6px 12px', cursor: 'pointer', fontFamily: 'var(--font-sans)', fontWeight: 500 }}>
-              登录
+            <button onClick={() => { setAuthTab('login'); setShowAuth(true) }} style={{ fontSize: '12px', color: '#D97706', background: '#FFFBF2', border: '1px solid #D97706', borderRadius: '6px', padding: '4px 10px', cursor: 'pointer', fontFamily: 'var(--font-sans)', fontWeight: 500 }}>
+              {t.login}
             </button>
           )}
         </div>
-      </nav>
 
       {/* ── 主体 ── */}
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 20px 80px' }}>
