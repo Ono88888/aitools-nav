@@ -98,9 +98,9 @@ export default function HomePage() {
   function handleSearch() {
     const q = query.trim()
     if (!q || loading) return
-    // 冷却检查
+    // 冷却检查（lastSearchRef.current=0时为首次搜索，直接放行）
     if (cooldown > 0) return
-    if (Date.now() - lastSearchRef.current < SEARCH_COOLDOWN_MS) return
+    if (lastSearchRef.current > 0 && Date.now() - lastSearchRef.current < SEARCH_COOLDOWN_MS) return
     try {
       const prev: string[] = JSON.parse(localStorage.getItem('wk_recent') || '[]')
       localStorage.setItem('wk_recent', JSON.stringify([q, ...prev.filter(x => x !== q)].slice(0, 5)))
