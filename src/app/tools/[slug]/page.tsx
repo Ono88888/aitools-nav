@@ -1,528 +1,301 @@
-import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { getAllTools, getToolBySlug } from '@/lib/notion'
-import { buildToolSchema, formatDate, scoreColor, scoreTextColor, SITE_URL, toolUrl } from '@/lib/utils'
-import type { Tool, PricePlan } from '@/types/tool'
+import type { Metadata } from 'next'
+import { ALL_TOOLS, getToolBySlug } from '@/lib/tools-data'
 
-// ── SSG: 构建时生成所有工具页 ────────────────────────────────
-export async function generateStaticParams() {
-  const tools = await getAllTools()
-  return tools.map(t => ({ slug: t.slug }))
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://gowukong.co'
+
+// ── SSG：构建时生成所有工具页 ────────────────────────────────
+export function generateStaticParams() {
+  return ALL_TOOLS.map(t => ({ slug: t.slug }))
 }
 
-// ── 动态 Metadata（每页独立 SEO）────────────────────────────
+// ── 动态 SEO Metadata ────────────────────────────────────────
 export async function generateMetadata(
   { params }: { params: { slug: string } }
 ): Promise<Metadata> {
-  const tool = await getToolBySlug(params.slug)
+  const tool = getToolBySlug(params.slug)
   if (!tool) return { title: '工具未找到' }
 
+  const title = `${tool.name} 怎么用？功能评测、价格、中文教程 [2025]`
+  const description = `${tool.name} 深度评测：${tool.tagline}。价格：${tool.price}，${tool.hasFree ? '有免费版，' : ''}${tool.cnAccess ? '国内可直接访问。' : '需要翻墙。'}适合${tool.bestFor}。`
   const pageUrl = `${SITE_URL}/tools/${tool.slug}/`
 
   return {
-    title: tool.seoTitle || `${tool.name} 怎么用？功能、价格、中文使用教程 [2025最新]`,
-    description: tool.seoDesc,
+    title,
+    description,
+    keywords: [tool.name, ...tool.tags, tool.category, 'AI工具', '使用教程', '评测'].join(','),
     alternates: { canonical: pageUrl },
     openGraph: {
-      title: tool.seoTitle,
-      description: tool.seoDesc,
+      title,
+      description,
       url: pageUrl,
       type: 'article',
-      publishedTime: tool.publishedAt,
-      modifiedTime: tool.updatedAt,
-      images: [{ url: tool.ogImage, width: 1200, height: 630 }],
+      siteName: 'GO悟空 AI导航',
+    },
+    twitter: {
+      card: 'summary',
+      title,
+      description,
     },
   }
 }
 
-// ── 子组件 ────────────────────────────────────────────────────
-
-function StarRating({ rating }: { rating: number }) {
-  const full = Math.floor(rating)
-  const half = rating - full >= 0.5
-  return (
-    <span aria-label={`评分 ${rating} 分（满分5分）`}>
-      {Array.from({ length: 5 }).map((_, i) => (
-        <span key={i} className={i < full ? 'text-amber-400' : i === full && half ? 'text-amber-300' : 'text-surface-3'}>
-          ★
-        </span>
-      ))}
-    </span>
-  )
+// ── FAQ 数据生成 ─────────────────────────────────────────────
+function buildFAQ(tool: ReturnType<typeof getToolBySlug>) {
+  if (!tool) return []
+  return [
+    {
+      q: `${tool.name} 是免费的吗？`,
+      a: tool.hasFree
+        ? `${tool.name} 提供免费版本。${tool.priceDetail}`
+        : `${tool.name} 是付费产品。${tool.priceDetail}`,
+    },
+    {
+      q: `${tool.name} 国内能用吗？`,
+      a: tool.cnAccess
+        ? `${tool.name} 在中国大陆可以直接访问使用，无需VPN。`
+        : `${tool.name} 在中国大陆需要科学上网（VPN）才能访问。`,
+    },
+    {
+      q: `${tool.name} 有API吗？`,
+      a: tool.hasApi
+        ? `${tool.name} 提供官方API，开发者可以接入到自己的产品中。`
+        : `${tool.name} 目前暂未开放公开API。`,
+    },
+    {
+      q: `${tool.name} 适合什么人用？`,
+      a: `${tool.name} 最适合${tool.bestFor}。`,
+    },
+    {
+      q: `${tool.name} 和同类工具相比有什么优势？`,
+      a: `${tool.name} 的核心优势：${tool.pros?.join('、') || tool.tagline}。`,
+    },
+  ]
 }
 
-function ScoreBar({ feature, score }: { feature: string; score: number }) {
-  return (
-    <tr className="border-b border-black/[0.05] last:border-0">
-      <td className="py-3 pr-4 text-sm text-ink-2 w-40">{feature}</td>
-      <td className="py-3 pr-4">
-        <div className="h-1.5 bg-surface-3 rounded-full overflow-hidden">
-          <div
-            className={`h-full rounded-full score-bar-fill ${scoreColor(score)}`}
-            style={{ width: `${score * 10}%` }}
-          />
-        </div>
-      </td>
-      <td className={`py-3 text-sm font-semibold text-right w-12 ${scoreTextColor(score)}`}>
-        {score.toFixed(1)}
-      </td>
-    </tr>
-  )
+// ── JSON-LD Schema ────────────────────────────────────────────
+function buildSchema(tool: ReturnType<typeof getToolBySlug>, faqs: ReturnType<typeof buildFAQ>) {
+  if (!tool) return null
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'SoftwareApplication',
+        name: tool.name,
+        description: tool.tagline,
+        applicationCategory: 'AIApplication',
+        operatingSystem: 'Web',
+        offers: {
+          '@type': 'Offer',
+          price: tool.hasFree ? '0' : undefined,
+          priceCurrency: 'USD',
+          description: tool.priceDetail,
+        },
+        aggregateRating: tool.rating > 0 ? {
+          '@type': 'AggregateRating',
+          ratingValue: tool.rating,
+          bestRating: 5,
+          ratingCount: 100,
+        } : undefined,
+        url: tool.url,
+      },
+      {
+        '@type': 'FAQPage',
+        mainEntity: faqs.map(f => ({
+          '@type': 'Question',
+          name: f.q,
+          acceptedAnswer: { '@type': 'Answer', text: f.a },
+        })),
+      },
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'GO悟空', item: SITE_URL },
+          { '@type': 'ListItem', position: 2, name: '全部工具', item: `${SITE_URL}/tools/` },
+          { '@type': 'ListItem', position: 3, name: tool.name, item: `${SITE_URL}/tools/${tool.slug}/` },
+        ],
+      },
+    ],
+  }
 }
 
-function PriceCard({ plan }: { plan: PricePlan }) {
-  return (
-    <div className={`relative border rounded-xl p-5 flex flex-col gap-4 bg-white ${
-      plan.featured
-        ? 'border-brand border-2 shadow-sm'
-        : 'border-black/[0.08]'
-    }`}>
-      {plan.featured && (
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-brand text-white text-xs font-semibold px-3 py-0.5 rounded-full whitespace-nowrap">
-          最受欢迎
-        </div>
-      )}
-      <div>
-        <div className="text-xs font-semibold text-ink-3 uppercase tracking-wider mb-2">{plan.name}</div>
-        <div className="text-3xl font-bold text-ink">
-          {plan.currency === 'USD' ? '$' : '¥'}{plan.price}
-          <span className="text-sm font-normal text-ink-3">{plan.period}</span>
-        </div>
-      </div>
-      <ul className="space-y-2 flex-1">
-        {plan.features.map(f => (
-          <li key={f} className="flex items-start gap-2 text-sm text-ink-2">
-            <span className="text-emerald-500 font-bold mt-0.5 flex-shrink-0">✓</span>
-            {f}
-          </li>
-        ))}
-        {plan.notFeatures.map(f => (
-          <li key={f} className="flex items-start gap-2 text-sm text-ink-4">
-            <span className="flex-shrink-0 mt-0.5">✕</span>
-            {f}
-          </li>
-        ))}
-      </ul>
-      <a
-        href={plan.ctaUrl}
-        target="_blank"
-        rel="nofollow noopener sponsored"
-        className={plan.featured ? 'btn-affiliate justify-center' : 'btn-secondary justify-center text-sm'}
-      >
-        {plan.cta}
-      </a>
-    </div>
-  )
-}
-
-function FaqItem({ question, answer }: { question: string; answer: string }) {
-  return (
-    <details className="border border-black/[0.07] rounded-xl overflow-hidden group">
-      <summary className="flex items-center justify-between gap-3 p-4 bg-surface-2 cursor-pointer hover:bg-surface-3 transition-colors text-sm font-medium text-ink select-none">
-        {question}
-        <span className="text-ink-3 group-open:rotate-180 transition-transform duration-200 flex-shrink-0">▾</span>
-      </summary>
-      <div className="p-4 pt-3 text-sm text-ink-2 leading-relaxed">
-        {answer}
-      </div>
-    </details>
-  )
-}
-
-function SidebarInfoRow({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div className="flex justify-between items-start gap-2 py-2.5 border-b border-black/[0.05] last:border-0 text-sm">
-      <span className="text-ink-3 flex-shrink-0">{label}</span>
-      <span className="text-ink font-medium text-right">{value}</span>
-    </div>
-  )
-}
-
-// ── 主页面组件 ─────────────────────────────────────────────────
-export default async function ToolPage({ params }: { params: { slug: string } }) {
-  const tool = await getToolBySlug(params.slug)
+// ── 页面组件 ─────────────────────────────────────────────────
+export default function ToolDetailPage({ params }: { params: { slug: string } }) {
+  const tool = getToolBySlug(params.slug)
   if (!tool) notFound()
 
-  const schema = buildToolSchema(tool)
-  const ratingOutOf5 = tool.rating > 5 ? tool.rating / 2 : tool.rating
+  const faqs = buildFAQ(tool)
+  const schema = buildSchema(tool, faqs)
+
+  // 同类推荐（同分类取3个）
+  const related = ALL_TOOLS
+    .filter(t => t.category === tool.category && t.slug !== tool.slug)
+    .slice(0, 3)
 
   return (
     <>
-      {/* ── JSON-LD Schema ── */}
+      {/* JSON-LD */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
       />
 
-      <div className="max-w-content mx-auto px-4">
+      <div style={{ maxWidth: '760px', margin: '0 auto', padding: '32px 20px 60px' }}>
 
-        {/* ── 面包屑 ── */}
-        <nav aria-label="面包屑" className="py-3 text-xs text-ink-3 flex items-center gap-1.5">
-          <Link href="/" className="hover:text-ink transition-colors">首页</Link>
+        {/* 面包屑 */}
+        <nav style={{ fontSize: '12px', color: 'var(--color-text-tertiary)', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <Link href="/" style={{ color: 'var(--color-text-tertiary)', textDecoration: 'none' }}>GO悟空</Link>
           <span>›</span>
-          <Link href="/tools/" className="hover:text-ink transition-colors">AI工具</Link>
+          <Link href="/tools/" style={{ color: 'var(--color-text-tertiary)', textDecoration: 'none' }}>工具库</Link>
           <span>›</span>
-          <span className="text-ink-2" aria-current="page">{tool.name}</span>
+          <span style={{ color: 'var(--color-text-primary)' }}>{tool.name}</span>
         </nav>
 
-        {/* ══════════════════════════════════════
-            HERO
-        ══════════════════════════════════════ */}
-        <section className="py-8 border-b border-black/[0.06]">
-          {/* 工具 Logo + 名称 */}
-          <div className="flex items-start gap-4 mb-5">
-            <div className="w-16 h-16 rounded-2xl bg-surface-2 border border-black/[0.07] flex items-center justify-center text-3xl flex-shrink-0">
-              {tool.logo}
-            </div>
-            <div>
-              <h1 className="font-serif text-3xl font-semibold text-ink leading-tight">
-                {tool.name}
-              </h1>
-              <p className="text-sm text-ink-3 mt-1">
-                由 {tool.maker} 开发 ·{' '}
-                <time dateTime={tool.updatedAt}>
-                  最后更新：{formatDate(tool.updatedAt)}
-                </time>
-              </p>
-            </div>
+        {/* 工具头部 */}
+        <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start', marginBottom: '28px' }}>
+          <div style={{ width: '72px', height: '72px', borderRadius: '18px', background: 'var(--color-background-secondary)', border: '0.5px solid var(--color-border-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '40px', flexShrink: 0 }}>
+            {tool.logo}
           </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '6px' }}>
+              <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '26px', fontWeight: 600, color: 'var(--color-text-primary)', margin: 0 }}>{tool.name}</h1>
+              <span style={{ fontSize: '12px', color: 'var(--color-text-tertiary)', background: 'var(--color-background-secondary)', padding: '2px 8px', borderRadius: '6px' }}>{tool.category}</span>
+              {tool.rating > 0 && <span style={{ fontSize: '14px', fontWeight: 600, color: '#D97706' }}>★ {tool.rating.toFixed(1)}</span>}
+            </div>
+            <p style={{ fontSize: '13px', color: 'var(--color-text-tertiary)', marginBottom: '10px' }}>by {tool.maker}</p>
+            <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', lineHeight: 1.6, margin: 0 }}>{tool.tagline}</p>
+          </div>
+        </div>
 
-          {/* 一句话介绍 */}
-          <p className="text-lg text-ink-2 leading-relaxed mb-5 max-w-2xl">
-            {tool.tagline}
-          </p>
-
-          {/* 评分 + 标签 */}
-          <div className="flex flex-wrap items-center gap-4 mb-6">
-            {tool.rating > 0 && (
-              <div
-                className="flex items-center gap-2"
-                itemScope itemType="https://schema.org/AggregateRating"
-              >
-                <span className="text-lg" itemProp="ratingValue">{ratingOutOf5.toFixed(1)}</span>
-                <StarRating rating={ratingOutOf5} />
-                <span className="text-sm text-ink-3">
-                  (<span itemProp="reviewCount">{tool.reviewCount.toLocaleString()}</span>条评价)
-                </span>
-                <meta itemProp="bestRating" content="5" />
+        {/* 核心信息栏 */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '28px' }}>
+          {[
+            { label: '价格', value: tool.price, icon: '💰' },
+            { label: '免费版', value: tool.hasFree ? '✓ 有' : '✗ 无', icon: '🆓', good: tool.hasFree },
+            { label: '国内可用', value: tool.cnAccess ? '✓ 可以' : '✗ 需VPN', icon: '🇨🇳', good: tool.cnAccess },
+            { label: 'API', value: tool.hasApi ? '✓ 支持' : '✗ 暂无', icon: '🔌', good: tool.hasApi },
+          ].map(item => (
+            <div key={item.label} style={{
+              padding: '12px', borderRadius: '12px', textAlign: 'center',
+              background: 'var(--color-background-secondary)',
+              border: '0.5px solid var(--color-border-tertiary)',
+            }}>
+              <div style={{ fontSize: '18px', marginBottom: '4px' }}>{item.icon}</div>
+              <div style={{ fontSize: '11px', color: 'var(--color-text-tertiary)', marginBottom: '3px' }}>{item.label}</div>
+              <div style={{ fontSize: '12px', fontWeight: 500, color: item.good === true ? '#085041' : item.good === false ? '#712B13' : 'var(--color-text-primary)' }}>
+                {item.value}
               </div>
-            )}
-            <div className="flex flex-wrap gap-1.5">
-              {tool.hasFreeVersion && (
-                <span className="tool-tag tool-tag-green">✓ 免费可用</span>
-              )}
-              {tool.hasApi && (
-                <span className="tool-tag tool-tag-blue">✓ API开放</span>
-              )}
-              {tool.tags.map(tag => (
-                <span key={tag} className="tool-tag">{tag}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* 价格详情 */}
+        <div style={{ marginBottom: '24px', padding: '16px', background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: '14px' }}>
+          <h2 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: '8px' }}>💰 价格说明</h2>
+          <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', lineHeight: 1.7, margin: 0 }}>{tool.priceDetail}</p>
+        </div>
+
+        {/* 优缺点 */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '24px' }}>
+          <div style={{ padding: '16px', background: '#F0FDF9', border: '0.5px solid #A7F3D0', borderRadius: '14px' }}>
+            <h2 style={{ fontSize: '14px', fontWeight: 600, color: '#065F46', marginBottom: '10px' }}>✓ 优点</h2>
+            {tool.pros?.map((p: string) => (
+              <div key={p} style={{ fontSize: '13px', color: '#047857', marginBottom: '6px', display: 'flex', gap: '6px' }}>
+                <span style={{ flexShrink: 0 }}>•</span><span>{p}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{ padding: '16px', background: '#FFF7F7', border: '0.5px solid #FECACA', borderRadius: '14px' }}>
+            <h2 style={{ fontSize: '14px', fontWeight: 600, color: '#991B1B', marginBottom: '10px' }}>✗ 缺点</h2>
+            {tool.cons?.map((c: string) => (
+              <div key={c} style={{ fontSize: '13px', color: '#B91C1C', marginBottom: '6px', display: 'flex', gap: '6px' }}>
+                <span style={{ flexShrink: 0 }}>•</span><span>{c}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 核心功能 */}
+        {tool.features?.length > 0 && (
+          <div style={{ marginBottom: '24px', padding: '16px', background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: '14px' }}>
+            <h2 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: '12px' }}>⚡ 核心功能</h2>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              {tool.features.map((f: string) => (
+                <span key={f} style={{ fontSize: '12px', padding: '4px 12px', borderRadius: '20px', background: 'var(--color-background-secondary)', border: '0.5px solid var(--color-border-secondary)', color: 'var(--color-text-secondary)' }}>
+                  {f}
+                </span>
               ))}
             </div>
           </div>
+        )}
 
-          {/* CTA 按钮 */}
-          <div className="flex flex-wrap gap-3">
-            <a
-              href={tool.affiliateUrl}
-              target="_blank"
-              rel="nofollow noopener sponsored"
-              className="btn-affiliate"
-            >
-              🚀 免费开始使用
-            </a>
-            <a href="#price" className="btn-secondary">
-              查看价格 ↓
-            </a>
-          </div>
-          <p className="text-xs text-ink-4 mt-2">
-            * 上方为联盟链接，点击可能为本站带来佣金，不影响您的价格。
-            <Link href="/affiliate-disclosure/" className="underline ml-1">了解更多</Link>
-          </p>
-        </section>
-
-        {/* ── 快速数据 ── */}
-        <section
-          aria-label="快速数据"
-          className="grid grid-cols-2 sm:grid-cols-4 border-b border-black/[0.06]"
-        >
-          {[
-            { label: '免费版限额', value: tool.freeLimit },
-            { label: '最低价格', value: tool.pricingStart },
-            { label: '上下文窗口', value: tool.contextWindow },
-            { label: '综合评分', value: `${ratingOutOf5.toFixed(1)} / 5` },
-          ].map(({ label, value }) => value ? (
-            <div key={label} className="py-5 px-4 border-r border-black/[0.06] last:border-r-0">
-              <div className="text-[11px] font-medium text-ink-3 uppercase tracking-wider mb-1">{label}</div>
-              <div className="text-lg font-semibold text-ink">{value}</div>
-            </div>
-          ) : null)}
-        </section>
-
-        {/* ══════════════════════════════════════
-            主体 + 侧边栏
-        ══════════════════════════════════════ */}
-        <div className="py-8 grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-10">
-
-          {/* ── 主内容 ── */}
-          <article className="space-y-0 min-w-0">
-
-            {/* 简介 */}
-            {tool.introduction && (
-              <section aria-labelledby="intro-heading">
-                <h2 id="intro-heading" className="section-heading">什么是 {tool.name}？</h2>
-                <div className="text-ink-2 leading-relaxed text-sm prose-p:mb-3">
-                  {tool.introduction}
-                </div>
-              </section>
-            )}
-
-            {/* 功能评分 */}
-            {tool.scores.length > 0 && (
-              <section id="features" aria-labelledby="scores-heading">
-                <h2 id="scores-heading" className="section-heading">核心功能评分</h2>
-                <table className="w-full" aria-label="功能评分表">
-                  <thead className="sr-only">
-                    <tr><th>功能</th><th>评分条</th><th>分数</th></tr>
-                  </thead>
-                  <tbody>
-                    {tool.scores.map(s => (
-                      <ScoreBar key={s.feature} feature={s.feature} score={s.score} />
-                    ))}
-                  </tbody>
-                </table>
-              </section>
-            )}
-
-            {/* 使用场景实测 */}
-            {tool.scenarios.length > 0 && (
-              <section id="scenarios" aria-labelledby="scenarios-heading">
-                <h2 id="scenarios-heading" className="section-heading">使用场景实测</h2>
-                <div className="space-y-4">
-                  {tool.scenarios.map((s, i) => (
-                    <div key={i} className="border border-black/[0.07] rounded-xl overflow-hidden">
-                      <div className="flex items-center gap-3 p-4 bg-surface-2">
-                        <span className="text-xl" aria-hidden="true">{s.icon}</span>
-                        <span className="font-semibold text-sm text-ink flex-1">{s.title}</span>
-                        <span className={`text-sm font-semibold ${scoreTextColor(s.score)}`}>
-                          ⭐ {s.score.toFixed(1)}分
-                        </span>
-                      </div>
-                      <div className="p-4 space-y-3 text-sm text-ink-2 leading-relaxed">
-                        <p>{s.description}</p>
-                        {s.promptExample && (
-                          <div>
-                            <div className="text-xs font-semibold text-ink-3 mb-1.5">实测 Prompt：</div>
-                            <blockquote className="border-l-2 border-brand pl-3 py-2 bg-surface-2 rounded-r-lg text-sm text-ink-2 italic">
-                              {s.promptExample}
-                            </blockquote>
-                          </div>
-                        )}
-                        {s.result && <p className="text-ink-3 text-xs">{s.result}</p>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {/* 价格方案 */}
-            {tool.pricing.length > 0 && (
-              <section id="price" aria-labelledby="price-heading">
-                <h2 id="price-heading" className="section-heading">价格方案</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  {tool.pricing.map(p => <PriceCard key={p.name} plan={p} />)}
-                </div>
-                <p className="text-xs text-ink-3 mt-3">
-                  * 价格以美元计，受汇率影响，实际人民币费用有所浮动。以官网实时显示为准。
-                </p>
-              </section>
-            )}
-
-            {/* 优缺点 */}
-            {(tool.prosAndCons.pros.length > 0 || tool.prosAndCons.cons.length > 0) && (
-              <section id="pros-cons" aria-labelledby="pros-cons-heading">
-                <h2 id="pros-cons-heading" className="section-heading">优缺点总结</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4">
-                    <h3 className="text-sm font-semibold text-emerald-700 mb-3">👍 优点</h3>
-                    <ul className="space-y-2">
-                      {tool.prosAndCons.pros.map(p => (
-                        <li key={p} className="flex items-start gap-2 text-sm text-emerald-800">
-                          <span className="text-emerald-500 flex-shrink-0 mt-0.5">✓</span>
-                          {p}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div className="bg-red-50 border border-red-100 rounded-xl p-4">
-                    <h3 className="text-sm font-semibold text-red-700 mb-3">👎 缺点</h3>
-                    <ul className="space-y-2">
-                      {tool.prosAndCons.cons.map(c => (
-                        <li key={c} className="flex items-start gap-2 text-sm text-red-800">
-                          <span className="text-red-400 flex-shrink-0 mt-0.5">✕</span>
-                          {c}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              </section>
-            )}
-
-            {/* FAQ */}
-            {tool.faq.length > 0 && (
-              <section id="faq" aria-labelledby="faq-heading">
-                <h2 id="faq-heading" className="section-heading">常见问题</h2>
-                <div className="space-y-2">
-                  {tool.faq.map(item => (
-                    <FaqItem key={item.question} {...item} />
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {/* 编辑总结 */}
-            {tool.verdict && (
-              <section id="verdict" aria-labelledby="verdict-heading">
-                <h2 id="verdict-heading" className="section-heading">编辑总结</h2>
-                <div className="bg-surface-2 border border-black/[0.06] rounded-xl p-5 text-sm text-ink-2 leading-relaxed">
-                  {tool.verdict}
-                </div>
-              </section>
-            )}
-
-            {/* 底部联盟 CTA */}
-            <div className="mt-8 p-6 bg-surface-2 border border-black/[0.06] rounded-2xl text-center">
-              <p className="text-ink-2 mb-3 text-sm">准备好试试 {tool.name} 了吗？</p>
-              <a
-                href={tool.affiliateUrl}
-                target="_blank"
-                rel="nofollow noopener sponsored"
-                className="btn-affiliate"
-              >
-                前往 {tool.name} 官网 →
-              </a>
-              <p className="text-xs text-ink-4 mt-2">联盟链接 · 点击可能为本站带来佣金</p>
-            </div>
-
-            {/* 联盟披露 */}
-            <div className="mt-6 p-4 bg-surface-2 rounded-xl border border-black/[0.06]">
-              <p className="text-xs text-ink-3 leading-relaxed">
-                <strong className="text-ink-2">联盟声明：</strong>
-                本页包含联盟推广链接。当您通过本站链接购买产品时，本站可能获得佣金，不影响您的价格，也不影响我们的独立评测。
-                所有评分基于实际测试，不受广告主影响。
-                <Link href="/affiliate-disclosure/" className="underline ml-1 hover:text-ink-2 transition-colors">
-                  查看完整声明 →
-                </Link>
-              </p>
-            </div>
-
-          </article>
-
-          {/* ── 侧边栏 ── */}
-          <aside className="space-y-4 lg:sticky lg:top-20 lg:self-start" aria-label="工具信息">
-
-            {/* 工具信息卡 */}
-            <div className="info-card">
-              <h3 className="text-xs font-semibold text-ink-3 uppercase tracking-wider mb-3">工具信息</h3>
-              <SidebarInfoRow label="开发商" value={tool.maker} />
-              <SidebarInfoRow label="上线时间" value={tool.launchDate} />
-              <SidebarInfoRow
-                label="免费版"
-                value={<span className={tool.hasFreeVersion ? 'text-emerald-600' : 'text-ink-4'}>
-                  {tool.hasFreeVersion ? '✓ 有' : '✕ 无'}
-                </span>}
-              />
-              <SidebarInfoRow label="起步价格" value={tool.pricingStart} />
-              <SidebarInfoRow
-                label="API 开放"
-                value={<span className={tool.hasApi ? 'text-emerald-600' : 'text-ink-4'}>
-                  {tool.hasApi ? '✓ 是' : '✕ 否'}
-                </span>}
-              />
-              <SidebarInfoRow label="支持平台" value={tool.platforms.join(' / ')} />
-              <SidebarInfoRow
-                label="官网"
-                value={
-                  <a href={tool.websiteUrl} target="_blank" rel="noopener nofollow"
-                    className="text-brand hover:underline">
-                    访问 ↗
-                  </a>
-                }
-              />
-            </div>
-
-            {/* 快速导航 */}
-            <div className="info-card">
-              <h3 className="text-xs font-semibold text-ink-3 uppercase tracking-wider mb-3">快速导航</h3>
-              <nav aria-label="页内导航">
-                <ul className="space-y-1">
-                  {[
-                    { href: '#features', label: '功能评分' },
-                    { href: '#scenarios', label: '使用场景实测' },
-                    { href: '#price', label: '价格方案' },
-                    { href: '#pros-cons', label: '优缺点' },
-                    { href: '#faq', label: '常见问题' },
-                    { href: '#verdict', label: '编辑总结' },
-                  ].map(({ href, label }) => (
-                    <li key={href}>
-                      <a
-                        href={href}
-                        className="block text-sm text-ink-3 hover:text-ink hover:bg-surface-2 px-2 py-1.5 rounded-lg transition-colors"
-                      >
-                        {label}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </nav>
-            </div>
-
-            {/* 侧边联盟 CTA */}
-            <div className="border-2 border-brand/20 bg-blue-50/50 rounded-xl p-4 text-center">
-              <p className="text-sm text-ink-2 mb-3">
-                🎉 立即免费试用 {tool.name}
-              </p>
-              <a
-                href={tool.affiliateUrl}
-                target="_blank"
-                rel="nofollow noopener sponsored"
-                className="btn-affiliate w-full justify-center text-sm"
-              >
-                免费开始
-              </a>
-              <p className="text-[11px] text-ink-4 mt-2">联盟链接</p>
-            </div>
-
-            {/* 相似工具 */}
-            {tool.similarTools.length > 0 && (
-              <div className="info-card">
-                <h3 className="text-xs font-semibold text-ink-3 uppercase tracking-wider mb-3">相似工具</h3>
-                <div className="space-y-1">
-                  {tool.similarTools.map(st => (
-                    <Link
-                      key={st.slug}
-                      href={toolUrl(st.slug)}
-                      className="flex items-center gap-3 p-2 rounded-lg hover:bg-surface-2 transition-colors group"
-                    >
-                      <div className="w-8 h-8 rounded-lg bg-surface-3 flex items-center justify-center text-base flex-shrink-0">
-                        {st.logo}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="text-sm font-medium text-ink group-hover:text-brand transition-colors truncate">
-                          {st.name}
-                        </div>
-                        <div className="text-xs text-ink-3">{st.maker} · {st.priceLabel}</div>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            )}
-
-          </aside>
+        {/* 标签 */}
+        <div style={{ marginBottom: '24px', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+          {tool.tags.map((tag: string) => (
+            <span key={tag} style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '4px', background: 'var(--color-background-secondary)', border: '0.5px solid var(--color-border-tertiary)', color: 'var(--color-text-tertiary)' }}>
+              #{tag}
+            </span>
+          ))}
         </div>
+
+        {/* CTA 按钮 */}
+        <div style={{ display: 'flex', gap: '10px', marginBottom: '36px', flexWrap: 'wrap' }}>
+          <a href={tool.url} target="_blank" rel="nofollow noopener"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '12px 24px', background: '#D97706', color: '#fff', borderRadius: '12px', fontSize: '14px', fontWeight: 500, textDecoration: 'none' }}>
+            访问 {tool.name} 官网 ↗
+          </a>
+          <Link href={`/compare/?a=${tool.slug}`}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '12px 20px', background: 'var(--color-background-secondary)', color: 'var(--color-text-secondary)', borderRadius: '12px', fontSize: '14px', textDecoration: 'none', border: '0.5px solid var(--color-border-secondary)' }}>
+            与其他工具对比
+          </Link>
+        </div>
+
+        {/* FAQ */}
+        <div style={{ marginBottom: '36px' }}>
+          <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '20px', fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: '16px' }}>
+            常见问题 FAQ
+          </h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {faqs.map((faq, i) => (
+              <details key={i} style={{ background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: '12px', overflow: 'hidden' }}>
+                <summary style={{ padding: '14px 16px', fontSize: '14px', fontWeight: 500, color: 'var(--color-text-primary)', cursor: 'pointer', listStyle: 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  {faq.q}
+                  <span style={{ color: 'var(--color-text-tertiary)', flexShrink: 0, marginLeft: '8px' }}>▾</span>
+                </summary>
+                <div style={{ padding: '0 16px 14px', fontSize: '13px', color: 'var(--color-text-secondary)', lineHeight: 1.7, borderTop: '0.5px solid var(--color-border-tertiary)', paddingTop: '12px' }}>
+                  {faq.a}
+                </div>
+              </details>
+            ))}
+          </div>
+        </div>
+
+        {/* 相关推荐 */}
+        {related.length > 0 && (
+          <div>
+            <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '18px', fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: '14px' }}>
+              同类 {tool.category} 工具
+            </h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {related.map(t => (
+                <Link key={t.slug} href={`/tools/${t.slug}/`} style={{
+                  display: 'flex', alignItems: 'center', gap: '14px',
+                  padding: '12px 16px', background: 'var(--color-background-primary)',
+                  border: '0.5px solid var(--color-border-tertiary)', borderRadius: '12px',
+                  textDecoration: 'none', transition: 'border-color .15s',
+                }}>
+                  <span style={{ fontSize: '28px' }}>{t.logo}</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '14px', fontWeight: 500, color: 'var(--color-text-primary)' }}>{t.name}</div>
+                    <div style={{ fontSize: '12px', color: 'var(--color-text-tertiary)' }}>{t.tagline}</div>
+                  </div>
+                  <span style={{ fontSize: '12px', fontWeight: 500, color: '#D97706' }}>★ {t.rating.toFixed(1)}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </>
   )

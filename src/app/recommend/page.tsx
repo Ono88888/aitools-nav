@@ -202,7 +202,9 @@ function PriceBars({ combos }: { combos: any[] }) {
 function RecommendContent() {
   const params = useSearchParams()
   const router = useRouter()
-  const query = params.get('q') || ''
+  const query   = params.get('q') || ''
+  const network = params.get('network') || 'all'  // all | cn | intl
+  const lang    = params.get('lang') || 'zh'
   const [loading, setLoading]         = useState(true)
   const [combos, setCombos]           = useState<any[]>([])
   const [sceneLabels, setSceneLabels] = useState<string[]>([])
@@ -219,7 +221,34 @@ function RecommendContent() {
     const MIN_MS = 2000
     const start = Date.now()
     const scene = matchScene(query)
-    const result = getCombos(scene)
+    let result = getCombos(scene)
+
+    // 按网络环境过滤工具步骤
+    const CN_DOMAINS = ['doubao.com','deepseek.com','kimi.moonshot.cn','yiyan.baidu.com',
+      'tongyi.aliyun.com','chatglm.cn','metaso.cn','jimeng.jianying.com','yige.baidu.com',
+      'capcut.cn','wps.cn','aippt.cn','coze.cn','feigua.io','xiezuocat.com',
+      'volcengine.com','iflyrec.com','klingai.kuaishou.com','vidu.cn','gaoding.com','wanxiang']
+    const CN_ONLY = ['doubao.com','kimi.moonshot.cn','yiyan.baidu.com','capcut.cn',
+      'aippt.cn','coze.cn','feigua.io','xiezuocat.com','klingai.kuaishou.com','vidu.cn','gaoding.com']
+
+    if (network === 'cn') {
+      result = result.map((combo: any) => ({
+        ...combo,
+        steps: combo.steps.map((step: any) => ({
+          ...step,
+          tools: step.tools.filter((tool: any) => CN_DOMAINS.some(d => tool.url?.includes(d))),
+        })).filter((step: any) => step.tools.length > 0),
+      })).filter((combo: any) => combo.steps.length > 0)
+    } else if (network === 'intl') {
+      result = result.map((combo: any) => ({
+        ...combo,
+        steps: combo.steps.map((step: any) => ({
+          ...step,
+          tools: step.tools.filter((tool: any) => !CN_ONLY.some(d => tool.url?.includes(d))),
+        })).filter((step: any) => step.tools.length > 0),
+      })).filter((combo: any) => combo.steps.length > 0)
+    }
+
     const labels = [SCENE_LABELS[scene] ?? scene]
 
     const elapsed = Date.now() - start
@@ -231,7 +260,7 @@ function RecommendContent() {
     }, delay)
 
     return () => clearTimeout(timer.current)
-  }, [query])
+  }, [query, network])
 
   function go() {
     const q = newQ.trim()
@@ -240,7 +269,7 @@ function RecommendContent() {
       const prev: string[] = JSON.parse(localStorage.getItem('wk_recent') || '[]')
       localStorage.setItem('wk_recent', JSON.stringify([q, ...prev.filter(x => x !== q)].slice(0, 5)))
     } catch {}
-    router.push(`/recommend?q=${encodeURIComponent(q)}`)
+    router.push(`/recommend?q=${encodeURIComponent(q)}&network=${network}&lang=${lang}`)
   }
 
   return (
