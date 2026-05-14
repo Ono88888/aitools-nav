@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import ToolIcon from '@/components/ToolIcon'
 import type { Metadata } from 'next'
 import { ALL_TOOLS, getToolBySlug } from '@/lib/tools-data'
 

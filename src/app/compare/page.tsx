@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import ToolIcon from '@/components/ToolIcon'
 import { ALL_TOOLS } from '@/lib/tools-data'
 
 // ── 预设热门对比组合 ─────────────────────────────────────────
@@ -147,7 +148,7 @@ export default function ComparePage() {
                 position: 'relative',
               }}>
                 {winner && <div style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', background: '#D97706', color: '#fff', fontSize: '10px', fontWeight: 600, padding: '2px 10px', borderRadius: '20px' }}>推荐选择</div>}
-                <div style={{ fontSize: '36px', marginBottom: '8px' }}>{tool.logo}</div>
+                <div style={{ marginBottom: '8px', display:'flex', justifyContent:'center' }}><ToolIcon slug={tool.slug} emoji={tool.logo} name={tool.name} size={48} /></div>
                 <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: '4px' }}>{tool.name}</div>
                 <div style={{ fontSize: '12px', color: 'var(--color-text-tertiary)', marginBottom: '12px' }}>{tool.maker}</div>
                 <div style={{ fontSize: '22px', fontWeight: 700, color: '#D97706' }}>★ {tool.rating.toFixed(1)}</div>

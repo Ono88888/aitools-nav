@@ -71,24 +71,98 @@ const DOMAIN_MAP: Record<string, string> = {
   'gaoding': 'gaoding.com',
 }
 
-// ── 工具Logo组件（真实favicon + emoji降级）────────────────────
-function ToolLogo({ slug, emoji, name }: { slug: string; emoji: string; name: string }) {
-  const domain = DOMAIN_MAP[slug]
-  const [imgError, setImgError] = useState(false)
+// ── 多源 favicon：优先直连官网，降级用 Google/DuckDuckGo API ──
+const FAVICON_SOURCES: Record<string, string[]> = {
+  'chatgpt':         ['https://openai.com/favicon.ico'],
+  'claude':          ['https://claude.ai/favicon.ico'],
+  'gemini':          ['https://www.gstatic.com/lamda/images/gemini_favicon_f069958c85030456e93de685481c559f160ea06.svg'],
+  'deepseek':        ['https://chat.deepseek.com/favicon.svg'],
+  'doubao':          ['https://lf-flow-web-cdn.doubao.com/obj/flow-doubao/doubao/web/logo-icon.png'],
+  'kimi':            ['https://statics.moonshot.cn/kimi-chat/favicon.ico'],
+  'tongyi':          ['https://img.alicdn.com/imgextra/i1/O1CN01MoIDpb1iMjBbhZFTB_!!6000000004398-2-tps-200-200.png'],
+  'wenxin':          ['https://nlp-eb.cdn.bcebos.com/logo/favicon.ico'],
+  'grok':            ['https://x.ai/favicon.ico'],
+  'zhipu':           ['https://chatglm.cn/favicon.ico'],
+  'mistral':         ['https://mistral.ai/favicon.ico'],
+  'perplexity':      ['https://www.perplexity.ai/favicon.svg'],
+  'metaso':          ['https://metaso.cn/favicon.ico'],
+  'phind':           ['https://www.phind.com/images/favicon.png'],
+  'jasper':          ['https://www.jasper.ai/favicon.ico'],
+  'copyai':          ['https://www.copy.ai/favicon.ico'],
+  'grammarly':       ['https://static.grammarly.com/assets/files/cb6ba12e3453def5b8afefc0a11dbfb0/favicon.ico'],
+  'notion-ai':       ['https://www.notion.so/front-static/favicon.ico'],
+  'xiezuocat':       ['https://xiezuocat.com/favicon.ico'],
+  'cursor':          ['https://www.cursor.com/favicon.ico'],
+  'github-copilot':  ['https://github.githubassets.com/favicons/favicon.svg'],
+  'codeium':         ['https://codeium.com/favicon.ico'],
+  'v0':              ['https://v0.dev/favicon.ico'],
+  'bolt':            ['https://bolt.new/favicon.svg'],
+  'tongyi-lingma':   ['https://img.alicdn.com/imgextra/i1/O1CN01MoIDpb1iMjBbhZFTB_!!6000000004398-2-tps-200-200.png'],
+  'devin':           ['https://devin.ai/favicon.ico'],
+  'midjourney':      ['https://www.midjourney.com/favicon.ico'],
+  'stable-diffusion':['https://stability.ai/favicon.ico'],
+  'dalle3':          ['https://openai.com/favicon.ico'],
+  'flux':            ['https://blackforestlabs.ai/favicon.ico'],
+  'jimeng':          ['https://lf-effect-material-infra.capcut.com/obj/effect-material-infra/jimeng/web/logo/favicon.ico'],
+  'wenxin-yige':     ['https://nlp-eb.cdn.bcebos.com/logo/favicon.ico'],
+  'ideogram':        ['https://ideogram.ai/favicon.ico'],
+  'leonardo':        ['https://app.leonardo.ai/favicon.ico'],
+  'runway':          ['https://runwayml.com/favicon.ico'],
+  'sora':            ['https://openai.com/favicon.ico'],
+  'kling':           ['https://klingai.kuaishou.com/favicon.ico'],
+  'vidu':            ['https://www.vidu.cn/favicon.ico'],
+  'heygen':          ['https://www.heygen.com/favicon.ico'],
+  'pika':            ['https://pika.art/favicon.ico'],
+  'elevenlabs':      ['https://elevenlabs.io/favicon.ico'],
+  'suno':            ['https://suno.com/favicon.ico'],
+  'udio':            ['https://www.udio.com/favicon.ico'],
+  'volcengine-tts':  ['https://www.volcengine.com/favicon.ico'],
+  'iflytek':         ['https://www.iflyrec.com/favicon.ico'],
+  'descript':        ['https://www.descript.com/favicon.ico'],
+  'gamma':           ['https://gamma.app/favicon.ico'],
+  'tome':            ['https://tome.app/favicon.ico'],
+  'aippt':           ['https://www.aippt.cn/favicon.ico'],
+  'monica':          ['https://monica.im/favicon.ico'],
+  'wps-ai':          ['https://www.wps.cn/favicon.ico'],
+  'julius':          ['https://julius.ai/favicon.ico'],
+  'helium10':        ['https://www.helium10.com/favicon.ico'],
+  'feigua':          ['https://www.feigua.io/favicon.ico'],
+  'manus':           ['https://manus.im/favicon.ico'],
+  'coze':            ['https://lf-coze-web-cdn.coze.cn/obj/coze-web-cn/obric/coze/favicon.1970.ico'],
+  'dify':            ['https://dify.ai/favicon.ico'],
+  'fastgpt':         ['https://fastgpt.in/favicon.ico'],
+  'zapier':          ['https://zapier.com/favicon.ico'],
+  'capcut':          ['https://lf16-capcut.faceulv.com/obj/capcutpackage/packages/16614/capcutweb-favicon-1687243993.ico'],
+  'canva':           ['https://static.canva.com/web/images/favicon.ico'],
+  'adobe-firefly':   ['https://www.adobe.com/favicon.ico'],
+  'gaoding':         ['https://www.gaoding.com/favicon.ico'],
+}
 
-  if (domain && !imgError) {
+function ToolLogo({ slug, emoji, name }: { slug: string; emoji: string; name: string }) {
+  const [srcIdx, setSrcIdx] = useState(0)
+  const sources = FAVICON_SOURCES[slug] || []
+
+  // 所有源都失败 → 用 DuckDuckGo favicon API（更宽松）
+  const domain = DOMAIN_MAP[slug]
+  const fallbackUrl = domain ? `https://icons.duckduckgo.com/ip3/${domain}.ico` : null
+
+  const currentSrc = srcIdx < sources.length
+    ? sources[srcIdx]
+    : (srcIdx === sources.length && fallbackUrl ? fallbackUrl : null)
+
+  if (currentSrc) {
     return (
       <img
-        src={`https://www.google.com/s2/favicons?domain=${domain}&sz=64`}
+        src={currentSrc}
         alt={name}
         width={32}
         height={32}
-        onError={() => setImgError(true)}
-        style={{ width: '32px', height: '32px', objectFit: 'contain', borderRadius: '6px' }}
+        onError={() => setSrcIdx(i => i + 1)}
+        style={{ width: '32px', height: '32px', objectFit: 'contain', borderRadius: '4px' }}
       />
     )
   }
-  return <span style={{ fontSize: '28px', lineHeight: 1 }}>{emoji || '🔧'}</span>
+  return <span style={{ fontSize: '26px', lineHeight: 1 }}>{emoji || '🔧'}</span>
 }
 
 // ── 分类列表 ─────────────────────────────────────────────────
