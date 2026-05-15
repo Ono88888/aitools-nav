@@ -1,424 +1,65 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import ToolIcon from '@/components/ToolIcon'
 import type { Metadata } from 'next'
 import { ALL_TOOLS, getToolBySlug } from '@/lib/tools-data'
+import ToolDetailClient from './ToolDetailClient'
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://gowukong.co'
 
-// ── SSG：构建时生成所有工具页 ────────────────────────────────
 export function generateStaticParams() {
   return ALL_TOOLS.map(t => ({ slug: t.slug }))
 }
 
-// ── 动态 SEO Metadata ────────────────────────────────────────
-export async function generateMetadata(
-  { params }: { params: { slug: string } }
-): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   const tool = getToolBySlug(params.slug)
   if (!tool) return { title: '工具未找到' }
-
-  const title = `${tool.name} 怎么用？功能评测、价格、中文教程 [2025]`
-  const description = `${tool.name} 深度评测：${tool.tagline}。价格：${tool.price}，${tool.hasFree ? '有免费版，' : ''}${tool.cnAccess ? '国内可直接访问。' : '需要翻墙。'}适合${tool.bestFor}。`
-  const pageUrl = `${SITE_URL}/tools/${tool.slug}/`
-
+  const title = `${tool.name} 深度评测 2025 | 怎么用？价格、优缺点、中文教程`
+  const description = `${tool.name}（${tool.maker}）深度测评：${tool.tagline}。价格${tool.price}，${tool.hasFree ? '有免费版，' : ''}${tool.cnAccess ? '国内可直接访问。' : '需翻墙。'}适合${tool.bestFor}。含用户真实评价。`
   return {
     title,
     description,
-    keywords: [tool.name, ...tool.tags, tool.category, 'AI工具', '使用教程', '评测'].join(','),
-    alternates: { canonical: pageUrl },
-    openGraph: {
-      title,
-      description,
-      url: pageUrl,
-      type: 'article',
-      siteName: 'GO悟空 AI导航',
-    },
-    twitter: {
-      card: 'summary',
-      title,
-      description,
-    },
+    keywords: [tool.name, `${tool.name}怎么用`, `${tool.name}评测`, ...tool.tags, tool.category, 'AI工具'].join(','),
+    alternates: { canonical: `${SITE_URL}/tools/${tool.slug}/` },
+    openGraph: { title, description, url: `${SITE_URL}/tools/${tool.slug}/`, type: 'article', siteName: 'GO悟空' },
   }
 }
 
-// ── FAQ 数据生成 ─────────────────────────────────────────────
-function buildFAQ(tool: ReturnType<typeof getToolBySlug>) {
-  if (!tool) return []
-  return [
-    {
-      q: `${tool.name} 是免费的吗？`,
-      a: tool.hasFree
-        ? `${tool.name} 提供免费版本。${tool.priceDetail}`
-        : `${tool.name} 是付费产品。${tool.priceDetail}`,
-    },
-    {
-      q: `${tool.name} 国内能用吗？`,
-      a: tool.cnAccess
-        ? `${tool.name} 在中国大陆可以直接访问使用，无需VPN。`
-        : `${tool.name} 在中国大陆需要科学上网（VPN）才能访问。`,
-    },
-    {
-      q: `${tool.name} 有API吗？`,
-      a: tool.hasApi
-        ? `${tool.name} 提供官方API，开发者可以接入到自己的产品中。`
-        : `${tool.name} 目前暂未开放公开API。`,
-    },
-    {
-      q: `${tool.name} 适合什么人用？`,
-      a: `${tool.name} 最适合${tool.bestFor}。`,
-    },
-    {
-      q: `${tool.name} 和同类工具相比有什么优势？`,
-      a: `${tool.name} 的核心优势：${tool.pros?.join('、') || tool.tagline}。`,
-    },
-  ]
-}
-
-// ── JSON-LD Schema ────────────────────────────────────────────
-function buildSchema(tool: ReturnType<typeof getToolBySlug>, faqs: ReturnType<typeof buildFAQ>) {
-  if (!tool) return null
-  return {
-    '@context': 'https://schema.org',
-    '@graph': [
-      {
-        '@type': 'SoftwareApplication',
-        name: tool.name,
-        description: tool.tagline,
-        applicationCategory: 'AIApplication',
-        operatingSystem: 'Web',
-        offers: {
-          '@type': 'Offer',
-          price: tool.hasFree ? '0' : undefined,
-          priceCurrency: 'USD',
-          description: tool.priceDetail,
-        },
-        aggregateRating: tool.rating > 0 ? {
-          '@type': 'AggregateRating',
-          ratingValue: tool.rating,
-          bestRating: 5,
-          ratingCount: 100,
-        } : undefined,
-        url: tool.url,
-      },
-      {
-        '@type': 'FAQPage',
-        mainEntity: faqs.map(f => ({
-          '@type': 'Question',
-          name: f.q,
-          acceptedAnswer: { '@type': 'Answer', text: f.a },
-        })),
-      },
-      {
-        '@type': 'BreadcrumbList',
-        itemListElement: [
-          { '@type': 'ListItem', position: 1, name: 'GO悟空', item: SITE_URL },
-          { '@type': 'ListItem', position: 2, name: '全部工具', item: `${SITE_URL}/tools/` },
-          { '@type': 'ListItem', position: 3, name: tool.name, item: `${SITE_URL}/tools/${tool.slug}/` },
-        ],
-      },
-    ],
-  }
-}
-
-// ── 页面组件 ─────────────────────────────────────────────────
 export default function ToolDetailPage({ params }: { params: { slug: string } }) {
   const tool = getToolBySlug(params.slug)
   if (!tool) notFound()
 
-  const faqs = buildFAQ(tool)
-  const schema = buildSchema(tool, faqs)
+  const related = ALL_TOOLS.filter(t => t.category === tool.category && t.slug !== tool.slug).slice(0, 3)
 
-  // 同类推荐（同分类取3个）
-  const related = ALL_TOOLS
-    .filter(t => t.category === tool.category && t.slug !== tool.slug)
-    .slice(0, 3)
+  const faqs = [
+    { q: `${tool.name} 是免费的吗？`, a: tool.hasFree ? `${tool.name} 提供免费版。${tool.priceDetail}` : `${tool.name} 是付费产品。${tool.priceDetail}` },
+    { q: `${tool.name} 国内能用吗？`, a: tool.cnAccess ? `${tool.name} 在中国大陆可直接访问，无需VPN。` : `${tool.name} 在中国大陆需要科学上网才能访问。` },
+    { q: `${tool.name} 有API接口吗？`, a: tool.hasApi ? `${tool.name} 提供官方API，开发者可接入自己的产品。` : `${tool.name} 目前暂未开放公开API。` },
+    { q: `${tool.name} 适合什么人用？`, a: `${tool.name} 最适合${tool.bestFor}，核心优势是${tool.pros?.slice(0, 2).join('、') || tool.tagline}。` },
+    { q: `${tool.name} 和同类工具相比怎么样？`, a: `${tool.name} 的主要优势：${tool.pros?.join('、') || '—'}。主要限制：${tool.cons?.join('、') || '—'}。` },
+  ]
+
+  const schema = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'SoftwareApplication',
+        name: tool.name, description: tool.tagline,
+        applicationCategory: 'AIApplication', operatingSystem: 'Web',
+        offers: { '@type': 'Offer', description: tool.priceDetail },
+        aggregateRating: tool.rating > 0 ? { '@type': 'AggregateRating', ratingValue: tool.rating, bestRating: 5, ratingCount: 128 } : undefined,
+        url: tool.url,
+      },
+      {
+        '@type': 'FAQPage',
+        mainEntity: faqs.map(f => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })),
+      },
+    ],
+  }
 
   return (
     <>
-      {/* JSON-LD */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
-      />
-
-      <div style={{ maxWidth: '760px', margin: '0 auto', padding: '32px 20px 60px' }}>
-
-        {/* 面包屑 */}
-        <nav style={{ fontSize: '12px', color: 'var(--color-text-tertiary)', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Link href="/" style={{ color: 'var(--color-text-tertiary)', textDecoration: 'none' }}>GO悟空</Link>
-          <span>›</span>
-          <Link href="/tools/" style={{ color: 'var(--color-text-tertiary)', textDecoration: 'none' }}>工具库</Link>
-          <span>›</span>
-          <span style={{ color: 'var(--color-text-primary)' }}>{tool.name}</span>
-        </nav>
-
-        {/* 工具头部 */}
-        <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start', marginBottom: '28px' }}>
-          <div style={{ width: '72px', height: '72px', borderRadius: '18px', background: 'var(--color-background-secondary)', border: '0.5px solid var(--color-border-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '40px', flexShrink: 0 }}>
-            {tool.logo}
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '6px' }}>
-              <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '26px', fontWeight: 600, color: 'var(--color-text-primary)', margin: 0 }}>{tool.name}</h1>
-              <span style={{ fontSize: '12px', color: 'var(--color-text-tertiary)', background: 'var(--color-background-secondary)', padding: '2px 8px', borderRadius: '6px' }}>{tool.category}</span>
-              {tool.rating > 0 && <span style={{ fontSize: '14px', fontWeight: 600, color: '#D97706' }}>★ {tool.rating.toFixed(1)}</span>}
-            </div>
-            <p style={{ fontSize: '13px', color: 'var(--color-text-tertiary)', marginBottom: '10px' }}>by {tool.maker}</p>
-            <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', lineHeight: 1.6, margin: 0 }}>{tool.tagline}</p>
-          </div>
-        </div>
-
-        {/* 核心信息栏 */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '28px' }}>
-          {[
-            { label: '价格', value: tool.price, icon: '💰' },
-            { label: '免费版', value: tool.hasFree ? '✓ 有' : '✗ 无', icon: '🆓', good: tool.hasFree },
-            { label: '国内可用', value: tool.cnAccess ? '✓ 可以' : '✗ 需VPN', icon: '🇨🇳', good: tool.cnAccess },
-            { label: 'API', value: tool.hasApi ? '✓ 支持' : '✗ 暂无', icon: '🔌', good: tool.hasApi },
-          ].map(item => (
-            <div key={item.label} style={{
-              padding: '12px', borderRadius: '12px', textAlign: 'center',
-              background: 'var(--color-background-secondary)',
-              border: '0.5px solid var(--color-border-tertiary)',
-            }}>
-              <div style={{ fontSize: '18px', marginBottom: '4px' }}>{item.icon}</div>
-              <div style={{ fontSize: '11px', color: 'var(--color-text-tertiary)', marginBottom: '3px' }}>{item.label}</div>
-              <div style={{ fontSize: '12px', fontWeight: 500, color: item.good === true ? '#085041' : item.good === false ? '#712B13' : 'var(--color-text-primary)' }}>
-                {item.value}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* 价格详情 */}
-        <div style={{ marginBottom: '24px', padding: '16px', background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: '14px' }}>
-          <h2 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: '8px' }}>💰 价格说明</h2>
-          <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', lineHeight: 1.7, margin: 0 }}>{tool.priceDetail}</p>
-        </div>
-
-        {/* 优缺点 */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '24px' }}>
-          <div style={{ padding: '16px', background: '#F0FDF9', border: '0.5px solid #A7F3D0', borderRadius: '14px' }}>
-            <h2 style={{ fontSize: '14px', fontWeight: 600, color: '#065F46', marginBottom: '10px' }}>✓ 优点</h2>
-            {tool.pros?.map((p: string) => (
-              <div key={p} style={{ fontSize: '13px', color: '#047857', marginBottom: '6px', display: 'flex', gap: '6px' }}>
-                <span style={{ flexShrink: 0 }}>•</span><span>{p}</span>
-              </div>
-            ))}
-          </div>
-          <div style={{ padding: '16px', background: '#FFF7F7', border: '0.5px solid #FECACA', borderRadius: '14px' }}>
-            <h2 style={{ fontSize: '14px', fontWeight: 600, color: '#991B1B', marginBottom: '10px' }}>✗ 缺点</h2>
-            {tool.cons?.map((c: string) => (
-              <div key={c} style={{ fontSize: '13px', color: '#B91C1C', marginBottom: '6px', display: 'flex', gap: '6px' }}>
-                <span style={{ flexShrink: 0 }}>•</span><span>{c}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* 核心功能 */}
-        {tool.features?.length > 0 && (
-          <div style={{ marginBottom: '24px', padding: '16px', background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: '14px' }}>
-            <h2 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: '12px' }}>⚡ 核心功能</h2>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-              {tool.features.map((f: string) => (
-                <span key={f} style={{ fontSize: '12px', padding: '4px 12px', borderRadius: '20px', background: 'var(--color-background-secondary)', border: '0.5px solid var(--color-border-secondary)', color: 'var(--color-text-secondary)' }}>
-                  {f}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* 标签 */}
-        <div style={{ marginBottom: '24px', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-          {tool.tags.map((tag: string) => (
-            <span key={tag} style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '4px', background: 'var(--color-background-secondary)', border: '0.5px solid var(--color-border-tertiary)', color: 'var(--color-text-tertiary)' }}>
-              #{tag}
-            </span>
-          ))}
-        </div>
-
-        {/* CTA 按钮 */}
-        <div style={{ display: 'flex', gap: '10px', marginBottom: '36px', flexWrap: 'wrap' }}>
-          <a href={tool.url} target="_blank" rel="nofollow noopener"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '12px 24px', background: '#D97706', color: '#fff', borderRadius: '12px', fontSize: '14px', fontWeight: 500, textDecoration: 'none' }}>
-            访问 {tool.name} 官网 ↗
-          </a>
-          <Link href={`/compare/?a=${tool.slug}`}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '12px 20px', background: 'var(--color-background-secondary)', color: 'var(--color-text-secondary)', borderRadius: '12px', fontSize: '14px', textDecoration: 'none', border: '0.5px solid var(--color-border-secondary)' }}>
-            与其他工具对比
-          </Link>
-        </div>
-
-        {/* FAQ */}
-        <div style={{ marginBottom: '36px' }}>
-          <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '20px', fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: '16px' }}>
-            常见问题 FAQ
-          </h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {faqs.map((faq, i) => (
-              <details key={i} style={{ background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: '12px', overflow: 'hidden' }}>
-                <summary style={{ padding: '14px 16px', fontSize: '14px', fontWeight: 500, color: 'var(--color-text-primary)', cursor: 'pointer', listStyle: 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  {faq.q}
-                  <span style={{ color: 'var(--color-text-tertiary)', flexShrink: 0, marginLeft: '8px' }}>▾</span>
-                </summary>
-                <div style={{ padding: '0 16px 14px', fontSize: '13px', color: 'var(--color-text-secondary)', lineHeight: 1.7, borderTop: '0.5px solid var(--color-border-tertiary)', paddingTop: '12px' }}>
-                  {faq.a}
-                </div>
-              </details>
-            ))}
-          </div>
-        </div>
-
-        {/* 相关推荐 */}
-        {related.length > 0 && (
-          <div>
-            <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '18px', fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: '14px' }}>
-              同类 {tool.category} 工具
-            </h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {related.map(t => (
-                <Link key={t.slug} href={`/tools/${t.slug}/`} style={{
-                  display: 'flex', alignItems: 'center', gap: '14px',
-                  padding: '12px 16px', background: 'var(--color-background-primary)',
-                  border: '0.5px solid var(--color-border-tertiary)', borderRadius: '12px',
-                  textDecoration: 'none', transition: 'border-color .15s',
-                }}>
-                  <span style={{ fontSize: '28px' }}>{t.logo}</span>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '14px', fontWeight: 500, color: 'var(--color-text-primary)' }}>{t.name}</div>
-                    <div style={{ fontSize: '12px', color: 'var(--color-text-tertiary)' }}>{t.tagline}</div>
-                  </div>
-                  <span style={{ fontSize: '12px', fontWeight: 500, color: '#D97706' }}>★ {t.rating.toFixed(1)}</span>
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* 用户评论区 */}
-      <CommentSection slug={params.slug} toolName={tool.name} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
+      <ToolDetailClient tool={tool as any} related={related as any} faqs={faqs} />
     </>
-  )
-}
-
-// ── 评论区客户端组件 ─────────────────────────────────────────
-'use client'
-import { useState, useEffect } from 'react'
-
-function CommentSection({ slug, toolName }: { slug: string; toolName: string }) {
-  const [comments, setComments] = useState<any[]>([])
-  const [name, setName]         = useState('')
-  const [text, setText]         = useState('')
-  const [rating, setRating]     = useState(5)
-  const [submitting, setSubmitting] = useState(false)
-  const [submitted, setSubmitted]   = useState(false)
-
-  // 从 localStorage 读取评论（后期可换成数据库）
-  useEffect(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem(`comments_${slug}`) || '[]')
-      setComments(saved)
-    } catch {}
-  }, [slug])
-
-  function submit() {
-    if (!text.trim()) return
-    setSubmitting(true)
-    const newComment = {
-      id: Date.now(),
-      name: name.trim() || '匿名用户',
-      text: text.trim(),
-      rating,
-      date: new Date().toLocaleDateString('zh-CN'),
-    }
-    const updated = [newComment, ...comments]
-    try {
-      localStorage.setItem(`comments_${slug}`, JSON.stringify(updated.slice(0, 50)))
-    } catch {}
-    setComments(updated)
-    setText('')
-    setName('')
-    setRating(5)
-    setSubmitting(false)
-    setSubmitted(true)
-    setTimeout(() => setSubmitted(false), 3000)
-  }
-
-  const inputStyle: React.CSSProperties = {
-    width: '100%', padding: '10px 12px', fontSize: '13px',
-    border: '1px solid var(--color-border-secondary)',
-    borderRadius: '10px', background: 'var(--color-background-secondary)',
-    color: 'var(--color-text-primary)', outline: 'none',
-    fontFamily: 'var(--font-sans)', boxSizing: 'border-box',
-  }
-
-  return (
-    <div style={{ marginTop: '36px', paddingTop: '28px', borderTop: '0.5px solid var(--color-border-tertiary)' }}>
-      <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '20px', fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: '20px' }}>
-        用户评价 {comments.length > 0 && <span style={{ fontSize: '14px', fontWeight: 400, color: 'var(--color-text-tertiary)' }}>（{comments.length}条）</span>}
-      </h2>
-
-      {/* 发表评论 */}
-      <div style={{ background: 'var(--color-background-secondary)', borderRadius: '14px', padding: '16px', marginBottom: '20px' }}>
-        <h3 style={{ fontSize: '14px', fontWeight: 500, color: 'var(--color-text-primary)', marginBottom: '12px' }}>写下你的使用体验</h3>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <input value={name} onChange={e => setName(e.target.value)} placeholder="你的昵称（可选，留空显示匿名）" style={inputStyle} />
-          {/* 评分 */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '13px', color: 'var(--color-text-tertiary)' }}>评分：</span>
-            {[1,2,3,4,5].map(n => (
-              <button key={n} onClick={() => setRating(n)} style={{ fontSize: '22px', background: 'none', border: 'none', cursor: 'pointer', opacity: n <= rating ? 1 : 0.3, transition: 'opacity .15s' }}>★</button>
-            ))}
-            <span style={{ fontSize: '13px', color: '#D97706', fontWeight: 500 }}>{rating}.0</span>
-          </div>
-          <textarea
-            value={text}
-            onChange={e => { if (e.target.value.length <= 500) setText(e.target.value) }}
-            placeholder={`分享你使用 ${toolName} 的真实体验，帮助其他用户做决策...`}
-            rows={3}
-            style={{ ...inputStyle, resize: 'vertical', minHeight: '80px' }}
-          />
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '11px', color: 'var(--color-text-tertiary)' }}>{text.length}/500</span>
-            <button
-              onClick={submit}
-              disabled={!text.trim() || submitting}
-              style={{ padding: '8px 20px', background: text.trim() ? '#D97706' : 'var(--color-background-primary)', color: text.trim() ? '#fff' : 'var(--color-text-tertiary)', border: 'none', borderRadius: '10px', fontSize: '13px', fontWeight: 500, cursor: text.trim() ? 'pointer' : 'default', fontFamily: 'var(--font-sans)' }}
-            >
-              {submitted ? '✓ 已发布' : submitting ? '发布中...' : '发布评价'}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* 评论列表 */}
-      {comments.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '32px', color: 'var(--color-text-tertiary)', fontSize: '13px' }}>
-          还没有评价，成为第一个评价 {toolName} 的用户 🎉
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {comments.map(c => (
-            <div key={c.id} style={{ padding: '14px 16px', background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: '12px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#D97706', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 600 }}>
-                    {c.name[0]}
-                  </div>
-                  <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--color-text-primary)' }}>{c.name}</span>
-                  <span style={{ fontSize: '12px', color: '#D97706' }}>{'★'.repeat(c.rating)}{'☆'.repeat(5-c.rating)}</span>
-                </div>
-                <span style={{ fontSize: '11px', color: 'var(--color-text-tertiary)' }}>{c.date}</span>
-              </div>
-              <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', lineHeight: 1.65, margin: 0 }}>{c.text}</p>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
   )
 }

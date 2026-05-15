@@ -79,9 +79,9 @@ export default function ComparePage() {
 
   // 总评分
   const scoreA = COMPARE_DIMS.filter(d => ['hasFree','hasApi','cnAccess'].includes(d.key))
-    .reduce((s, d) => s + (toolA?.[d.key] ? 1 : 0), 0) + (toolA?.rating || 0)
+    .reduce((s, d) => s + ((toolA as any)?.[d.key] ? 1 : 0), 0) + (toolA?.rating || 0)
   const scoreB = COMPARE_DIMS.filter(d => ['hasFree','hasApi','cnAccess'].includes(d.key))
-    .reduce((s, d) => s + (toolB?.[d.key] ? 1 : 0), 0) + (toolB?.rating || 0)
+    .reduce((s, d) => s + ((toolB as any)?.[d.key] ? 1 : 0), 0) + (toolB?.rating || 0)
 
   const selectStyle = (active: boolean): React.CSSProperties => ({
     flex: 1, padding: '10px 14px', fontSize: '14px', fontWeight: active ? 500 : 400,
