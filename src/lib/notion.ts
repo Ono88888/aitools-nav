@@ -125,7 +125,7 @@ export async function getAllTools(): Promise<Tool[]> {
         property: 'status',
         status: { equals: 'published' },
       },
-      sorts: [{ timestamp: 'last_edited_time', direction: 'descending' }],
+      sorts: [{ property: 'updatedAt', direction: 'descending' }],
       page_size: 100,
       ...(cursor ? { start_cursor: cursor } : {}),
     })

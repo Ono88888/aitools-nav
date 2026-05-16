@@ -4,7 +4,35 @@ import { useEffect, useState, useRef, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import WukongLogo from '@/components/WukongLogo'
+import ToolIcon from '@/components/ToolIcon'
 import { getCombos, matchScene, SCENE_LABELS } from '@/lib/combos-data'
+
+// 工具名 → slug 映射（用于 ToolIcon）
+const NAME_TO_SLUG: Record<string, string> = {
+  '豆包':'doubao','DeepSeek':'deepseek','Claude 3.5':'claude','Claude API':'claude',
+  'ElevenLabs':'elevenlabs','剪映专业版':'capcut','Midjourney':'midjourney',
+  'Cursor':'cursor','GitHub Copilot':'github-copilot','Codeium':'codeium',
+  'v0':'v0','Bolt.new':'bolt','通义灵码':'tongyi-lingma','Devin':'devin',
+  'Gamma':'gamma','AiPPT':'aippt','Suno v4':'suno','Udio':'udio','Udio Pro':'udio',
+  'HeyGen':'heygen','Runway Gen-3':'runway','可灵AI':'kling','即梦AI':'jimeng',
+  'Kimi':'kimi','Perplexity':'perplexity','秘塔AI搜索':'metaso','Phind':'phind',
+  'GPT-4o':'chatgpt','ChatGPT':'chatgpt','Descript':'descript','Grok':'grok',
+  '讯飞听见':'iflytek','Notion AI':'notion-ai','写作猫':'xiezuocat',
+  'Jasper':'jasper','Stable Diffusion':'stable-diffusion','Dify':'dify',
+  '扣子（Coze）':'coze','FastGPT':'fastgpt','Zapier':'zapier','Manus':'manus',
+  '飞瓜数据':'feigua','Helium 10':'helium10','火山引擎TTS':'volcengine-tts',
+  'Vidu':'vidu','Pika':'pika','Sora':'sora','Tome':'tome','Monica':'monica',
+  'Julius AI':'julius','WPS AI':'wps-ai','Adobe Firefly':'adobe-firefly',
+  'Canva':'canva','稿定设计':'gaoding','Gemini':'gemini','Grammarly':'grammarly',
+  '文心一言':'wenxin','通义千问':'tongyi','智谱清言':'zhipu','Mistral AI':'mistral',
+  '135编辑器':'xiezuocat','秀米':'metaso','Markdown Nice':'notion-ai',
+  'Copy.ai':'copyai','GitHub Actions':'github-copilot','Vercel':'v0',
+  'Supabase':'dify','Buzzsprout':'elevenlabs','Audacity':'descript',
+  '小宇宙':'iflytek','Adobe Audition':'descript','Spotify for Podcasters':'suno',
+  'Premiere Pro':'capcut','DaVinci Resolve':'capcut','After Effects':'capcut',
+  'Photoshop AI':'adobe-firefly','Beautiful.ai':'gamma','Obsidian':'notion-ai',
+  'Tidio AI':'fastgpt','AdCreative.ai':'canva','Klaviyo':'zapier','Shopify':'zapier',
+}
 
 const TIER_META: Record<string, { label: string; accent: string; tagBg: string; tagColor: string; darkTagBg: string }> = {
   free: { label: '全免费方案', accent: '#1D9E75', tagBg: '#E1F5EE', tagColor: '#085041', darkTagBg: '#085041' },
@@ -62,13 +90,19 @@ function WukongLoader({ query }: { query: string }) {
 
 // ── 工具标签 ─────────────────────────────────────────────
 function ToolChip({ tool, accent }: { tool: any; accent: string }) {
+  const slug = NAME_TO_SLUG[tool.name]
   return (
     <a href={tool.url} target="_blank" rel="nofollow noopener"
-      style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-secondary)', borderRadius: '8px', padding: '5px 10px', textDecoration: 'none', transition: 'border-color .15s, transform .1s', cursor: 'pointer' }}
+      style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-secondary)', borderRadius: '8px', padding: '5px 10px', textDecoration: 'none', transition: 'border-color .15s, transform .1s', cursor: 'pointer' }}
       onMouseEnter={e => { e.currentTarget.style.borderColor = accent; e.currentTarget.style.transform = 'translateY(-1px)' }}
       onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border-secondary)'; e.currentTarget.style.transform = 'none' }}
     >
-      <span style={{ fontSize: '15px', lineHeight: 1 }}>{tool.logo}</span>
+      <div style={{ width: 20, height: 20, borderRadius: 4, overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {slug
+          ? <ToolIcon slug={slug} name={tool.name} size={20} />
+          : <span style={{ fontSize: '14px', lineHeight: 1 }}>{tool.logo}</span>
+        }
+      </div>
       <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--color-text-primary)' }}>{tool.name}</span>
       <span style={{ fontSize: '10px', color: 'var(--color-text-tertiary)' }}>{tool.price}</span>
       <span style={{ fontSize: '10px', color: accent }}>↗</span>
@@ -84,7 +118,7 @@ const PLAN_STYLES = [
 ]
 
 // ── 组合卡片 ─────────────────────────────────────────────
-function ComboCard({ combo, defaultOpen, index }: { combo: any; defaultOpen: boolean; index: number }) {
+function ComboCard({ combo, defaultOpen, index, scene }: { combo: any; defaultOpen: boolean; index: number; scene: string }) {
   const [open, setOpen] = useState(defaultOpen)
   const m = TIER_META[combo.tier] || TIER_META.mid
   const ps = PLAN_STYLES[index] || PLAN_STYLES[2]
@@ -164,7 +198,7 @@ function ComboCard({ combo, defaultOpen, index }: { combo: any; defaultOpen: boo
                 <span key={p} style={{ fontSize: '11px', color: 'var(--color-text-secondary)', background: 'var(--color-background-secondary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: '4px', padding: '2px 8px' }}>{p}</span>
               ))}
             </div>
-            <Link href={`/combos/${scenes[0] || 'video'}/${combo.id}/`} style={{ fontSize: '12px', fontWeight: 500, background: combo.isRec ? m.accent : 'transparent', color: combo.isRec ? '#fff' : m.accent, border: `1px solid ${m.accent}`, borderRadius: '8px', padding: '6px 14px', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+            <Link href={`/combos/${scene}/${combo.id}/`} style={{ fontSize: '12px', fontWeight: 500, background: combo.isRec ? m.accent : 'transparent', color: combo.isRec ? '#fff' : m.accent, border: `1px solid ${m.accent}`, borderRadius: '8px', padding: '6px 14px', textDecoration: 'none', whiteSpace: 'nowrap' }}>
               查看完整流程 →
             </Link>
           </div>
@@ -306,7 +340,7 @@ function RecommendContent() {
             </p>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '22px', marginTop: '8px' }}>
-            {combos.map((c, i) => <ComboCard key={c.id} combo={c} defaultOpen={i === 0} index={i} />)}
+            {combos.map((c, i) => <ComboCard key={c.id} combo={c} defaultOpen={i === 0} index={i} scene={matchScene(query)} />)}
           </div>
           {combos.length >= 2 && <PriceBars combos={combos} />}
           <div style={{ marginTop: '20px', padding: '.9rem 1rem', textAlign: 'center', background: 'var(--color-background-secondary)', borderRadius: '12px', border: '0.5px solid var(--color-border-tertiary)' }}>
