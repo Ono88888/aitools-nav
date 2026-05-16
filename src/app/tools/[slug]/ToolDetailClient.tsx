@@ -4,93 +4,67 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import ToolIcon from '@/components/ToolIcon'
 
-// ── 广告位组件（预留，接入AdSense后替换 data-ad-slot）─────────
 function AdSlot({ id, style }: { id: string; style?: React.CSSProperties }) {
   return (
     <div id={id} style={{
       background: 'var(--color-background-secondary)',
       border: '1px dashed var(--color-border-secondary)',
-      borderRadius: '12px',
-      padding: '16px',
-      textAlign: 'center',
-      color: 'var(--color-text-tertiary)',
-      fontSize: '11px',
-      minHeight: '90px',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      ...style,
+      borderRadius: '12px', padding: '16px', textAlign: 'center',
+      color: 'var(--color-text-tertiary)', fontSize: '11px',
+      minHeight: '60px', display: 'flex', alignItems: 'center',
+      justifyContent: 'center', ...style,
     }}>
-      {/* Google AdSense 代码粘贴到这里 */}
-      {/* <ins className="adsbygoogle" data-ad-client="ca-pub-XXXXXX" data-ad-slot="XXXXXX" /> */}
       <span>广告位 · Ad Slot</span>
     </div>
   )
 }
 
-// ── 星级评分组件 ─────────────────────────────────────────────
 function StarRating({ value, onChange, size = 24 }: {
   value: number; onChange?: (v: number) => void; size?: number
 }) {
   const [hover, setHover] = useState(0)
   return (
     <div style={{ display: 'flex', gap: '2px' }}>
-      {[1, 2, 3, 4, 5].map(n => (
-        <span
-          key={n}
+      {[1,2,3,4,5].map(n => (
+        <span key={n}
           onClick={() => onChange?.(n)}
           onMouseEnter={() => onChange && setHover(n)}
           onMouseLeave={() => onChange && setHover(0)}
-          style={{
-            fontSize: size, cursor: onChange ? 'pointer' : 'default',
-            color: n <= (hover || value) ? '#D97706' : '#D1D5DB',
-            transition: 'color .1s', lineHeight: 1,
-          }}
-        >★</span>
+          style={{ fontSize: size, cursor: onChange ? 'pointer' : 'default', color: n <= (hover || value) ? '#D97706' : '#D1D5DB', transition: 'color .1s', lineHeight: 1 }}>
+          ★
+        </span>
       ))}
     </div>
   )
 }
 
-// ── 评论区 ─────────────────────────────────────────────────
-interface Comment {
-  id: number; name: string; text: string
-  rating: number; date: string; helpful: number
-}
+interface Comment { id: number; name: string; text: string; rating: number; date: string; helpful: number }
 
 function CommentSection({ slug, toolName }: { slug: string; toolName: string }) {
   const [comments, setComments] = useState<Comment[]>([])
-  const [name, setName]         = useState('')
-  const [text, setText]         = useState('')
-  const [rating, setRating]     = useState(5)
+  const [name, setName] = useState('')
+  const [text, setText] = useState('')
+  const [rating, setRating] = useState(5)
   const [submitting, setSubmitting] = useState(false)
-  const [done, setDone]         = useState(false)
-  const [user, setUser]         = useState<any>(null)
-  const [showLogin, setShowLogin] = useState(false)
+  const [done, setDone] = useState(false)
 
   useEffect(() => {
     try {
       const saved = JSON.parse(localStorage.getItem(`wk_comments_${slug}`) || '[]')
       setComments(saved)
-      const u = localStorage.getItem('wk_user')
-      if (u) setUser(JSON.parse(u))
     } catch {}
   }, [slug])
 
-  // 计算本站综合评分（与工具基础分混合）
   const userAvg = comments.length > 0
-    ? comments.reduce((s, c) => s + c.rating, 0) / comments.length
-    : 0
+    ? comments.reduce((s, c) => s + c.rating, 0) / comments.length : 0
 
   function submit() {
     if (!text.trim() || text.length < 10) return
     setSubmitting(true)
     const c: Comment = {
-      id: Date.now(),
-      name: name.trim() || (user?.email?.split('@')[0]) || '匿名用户',
+      id: Date.now(), name: name.trim() || '匿名用户',
       text: text.trim(), rating,
-      date: new Date().toLocaleDateString('zh-CN'),
-      helpful: 0,
+      date: new Date().toLocaleDateString('zh-CN'), helpful: 0,
     }
     const updated = [c, ...comments]
     try { localStorage.setItem(`wk_comments_${slug}`, JSON.stringify(updated.slice(0, 100))) } catch {}
@@ -129,14 +103,12 @@ function CommentSection({ slug, toolName }: { slug: string; toolName: string }) 
         )}
       </div>
 
-      {/* 发表评论 */}
       <div style={{ background: 'var(--color-background-secondary)', borderRadius: '14px', padding: '18px', marginBottom: '20px', border: '0.5px solid var(--color-border-tertiary)' }}>
         <p style={{ fontSize: '13px', fontWeight: 500, color: 'var(--color-text-primary)', marginBottom: '14px' }}>
-          📝 写下你的真实体验，帮助其他用户决策
+          📝 写下你的真实体验
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <input value={name} onChange={e => setName(e.target.value)}
-            placeholder="你的昵称（留空显示匿名）" style={inp} maxLength={20} />
+          <input value={name} onChange={e => setName(e.target.value)} placeholder="你的昵称（留空显示匿名）" style={inp} maxLength={20} />
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span style={{ fontSize: '13px', color: 'var(--color-text-secondary)', flexShrink: 0 }}>打分：</span>
             <StarRating value={rating} onChange={setRating} size={28} />
@@ -154,20 +126,13 @@ function CommentSection({ slug, toolName }: { slug: string; toolName: string }) 
               {text.length}/500{text.length < 10 && text.length > 0 ? '（至少10字）' : ''}
             </span>
             <button onClick={submit} disabled={text.length < 10 || submitting}
-              style={{
-                padding: '8px 22px', border: 'none', borderRadius: '10px',
-                fontSize: '13px', fontWeight: 500, cursor: text.length >= 10 ? 'pointer' : 'not-allowed',
-                background: text.length >= 10 ? '#D97706' : 'var(--color-background-primary)',
-                color: text.length >= 10 ? '#fff' : 'var(--color-text-tertiary)',
-                fontFamily: 'var(--font-sans)', transition: 'all .15s',
-              }}>
+              style={{ padding: '8px 22px', border: 'none', borderRadius: '10px', fontSize: '13px', fontWeight: 500, cursor: text.length >= 10 ? 'pointer' : 'not-allowed', background: text.length >= 10 ? '#D97706' : 'var(--color-background-primary)', color: text.length >= 10 ? '#fff' : 'var(--color-text-tertiary)', fontFamily: 'var(--font-sans)', transition: 'all .15s' }}>
               {done ? '✓ 已发布' : submitting ? '发布中...' : '发布评价'}
             </button>
           </div>
         </div>
       </div>
 
-      {/* 评论列表 */}
       {comments.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '40px', color: 'var(--color-text-tertiary)', fontSize: '14px', background: 'var(--color-background-secondary)', borderRadius: '14px' }}>
           还没有评价，成为第一个评价 {toolName} 的用户 🎉
@@ -200,16 +165,12 @@ function CommentSection({ slug, toolName }: { slug: string; toolName: string }) 
   )
 }
 
-// ── 主组件 ──────────────────────────────────────────────────
 export default function ToolDetailClient({ tool, related, faqs }: {
   tool: any; related: any[]; faqs: { q: string; a: string }[]
 }) {
-  const [adExpanded, setAdExpanded] = useState(false)
-
   return (
     <div style={{ maxWidth: '800px', margin: '0 auto', padding: '28px 20px 80px' }}>
 
-      {/* 面包屑 */}
       <nav style={{ fontSize: '12px', color: 'var(--color-text-tertiary)', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '5px' }}>
         <Link href="/" style={{ color: 'var(--color-text-tertiary)', textDecoration: 'none' }}>GO悟空</Link>
         <span>›</span>
@@ -218,7 +179,6 @@ export default function ToolDetailClient({ tool, related, faqs }: {
         <span style={{ color: 'var(--color-text-primary)' }}>{tool.name}</span>
       </nav>
 
-      {/* ── 工具头部 ── */}
       <div style={{ display: 'flex', gap: '18px', alignItems: 'flex-start', marginBottom: '24px' }}>
         <div style={{ width: '72px', height: '72px', borderRadius: '18px', background: 'var(--color-background-secondary)', border: '0.5px solid var(--color-border-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
           <ToolIcon slug={tool.slug} emoji={tool.logo} name={tool.name} size={44} />
@@ -234,14 +194,12 @@ export default function ToolDetailClient({ tool, related, faqs }: {
         </div>
       </div>
 
-      {/* ── 广告位 A（详情页顶部）── */}
-      <AdSlot id="ad-tool-top" style={{ marginBottom: '20px', minHeight: '90px' }} />
+      <AdSlot id="ad-tool-top" style={{ marginBottom: '20px' }} />
 
-      {/* ── 核心指标 ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: '20px' }}>
         {[
-          { icon: '💰', label: '价格', value: tool.price },
-          { icon: '🆓', label: '免费版', value: tool.hasFree ? '✓ 有', ok: true },
+          { icon: '💰', label: '价格', value: tool.price, ok: undefined },
+          { icon: '🆓', label: '免费版', value: tool.hasFree ? '✓ 有' : '✗ 无', ok: tool.hasFree },
           { icon: '🇨🇳', label: '国内可用', value: tool.cnAccess ? '✓ 是' : '✗ 需VPN', ok: tool.cnAccess },
           { icon: '🔌', label: 'API', value: tool.hasApi ? '✓ 支持' : '✗ 暂无', ok: tool.hasApi },
         ].map(item => (
@@ -255,13 +213,11 @@ export default function ToolDetailClient({ tool, related, faqs }: {
         ))}
       </div>
 
-      {/* ── 价格详情 ── */}
       <div style={{ marginBottom: '18px', padding: '16px', background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: '14px' }}>
         <h2 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: '8px' }}>💰 价格说明</h2>
         <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', lineHeight: 1.7, margin: 0 }}>{tool.priceDetail}</p>
       </div>
 
-      {/* ── 优缺点 ── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '18px' }}>
         <div style={{ padding: '16px', background: '#F0FDF9', border: '0.5px solid #A7F3D0', borderRadius: '14px' }}>
           <h2 style={{ fontSize: '14px', fontWeight: 600, color: '#065F46', marginBottom: '10px' }}>✓ 优点</h2>
@@ -281,7 +237,6 @@ export default function ToolDetailClient({ tool, related, faqs }: {
         </div>
       </div>
 
-      {/* ── 核心功能标签 ── */}
       {tool.features?.length > 0 && (
         <div style={{ marginBottom: '18px', padding: '16px', background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: '14px' }}>
           <h2 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: '12px' }}>⚡ 核心功能</h2>
@@ -293,37 +248,34 @@ export default function ToolDetailClient({ tool, related, faqs }: {
         </div>
       )}
 
-      {/* ── CTA 按钮（不直接跳转，而是在详情页停留，提供去官网按钮）── */}
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '24px', padding: '20px', background: 'linear-gradient(135deg, #FFFBF2, #FEF3C7)', border: '1px solid #FDE68A', borderRadius: '16px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '24px', padding: '20px', background: '#FFFBF2', border: '1px solid #FDE68A', borderRadius: '16px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
           <p style={{ fontSize: '14px', fontWeight: 500, color: '#92400E', margin: '0 0 4px' }}>准备好了？前往 {tool.name} 官网</p>
           <p style={{ fontSize: '12px', color: '#B45309', margin: 0 }}>将在新标签页打开 · 与本站无关联</p>
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
           <a href={tool.url} target="_blank" rel="nofollow noopener"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '10px 22px', background: '#D97706', color: '#fff', borderRadius: '12px', fontSize: '14px', fontWeight: 500, textDecoration: 'none', flexShrink: 0 }}>
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '10px 22px', background: '#D97706', color: '#fff', borderRadius: '12px', fontSize: '14px', fontWeight: 500, textDecoration: 'none' }}>
             访问官网 ↗
           </a>
           <Link href={`/compare/?a=${tool.slug}`}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '10px 16px', background: 'var(--color-background-primary)', color: 'var(--color-text-secondary)', borderRadius: '12px', fontSize: '13px', textDecoration: 'none', border: '0.5px solid var(--color-border-secondary)', flexShrink: 0 }}>
+            style={{ display: 'inline-flex', alignItems: 'center', padding: '10px 16px', background: 'var(--color-background-primary)', color: 'var(--color-text-secondary)', borderRadius: '12px', fontSize: '13px', textDecoration: 'none', border: '0.5px solid var(--color-border-secondary)' }}>
             与其他工具对比
           </Link>
         </div>
       </div>
 
-      {/* ── 广告位 B（内容中部侧边）── */}
-      <AdSlot id="ad-tool-mid" style={{ marginBottom: '24px', minHeight: '60px' }} />
+      <AdSlot id="ad-tool-mid" style={{ marginBottom: '24px' }} />
 
-      {/* ── FAQ ── */}
       <div style={{ marginBottom: '28px' }}>
         <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '20px', fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: '14px' }}>常见问题 FAQ</h2>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {faqs.map((faq, i) => (
             <details key={i} style={{ background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: '12px', overflow: 'hidden' }}>
-              <summary style={{ padding: '14px 16px', fontSize: '14px', fontWeight: 500, color: 'var(--color-text-primary)', cursor: 'pointer', listStyle: 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center', userSelect: 'none' }}>
+              <summary style={{ padding: '14px 16px', fontSize: '14px', fontWeight: 500, color: 'var(--color-text-primary)', cursor: 'pointer', listStyle: 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 {faq.q} <span style={{ color: 'var(--color-text-tertiary)', marginLeft: '8px', flexShrink: 0 }}>▾</span>
               </summary>
-              <div style={{ padding: '0 16px 14px', fontSize: '13px', color: 'var(--color-text-secondary)', lineHeight: 1.7, borderTop: '0.5px solid var(--color-border-tertiary)', paddingTop: '12px' }}>
+              <div style={{ padding: '12px 16px 14px', fontSize: '13px', color: 'var(--color-text-secondary)', lineHeight: 1.7, borderTop: '0.5px solid var(--color-border-tertiary)' }}>
                 {faq.a}
               </div>
             </details>
@@ -331,7 +283,6 @@ export default function ToolDetailClient({ tool, related, faqs }: {
         </div>
       </div>
 
-      {/* ── 同类推荐 ── */}
       {related.length > 0 && (
         <div style={{ marginBottom: '28px' }}>
           <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '18px', fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: '12px' }}>
@@ -339,7 +290,7 @@ export default function ToolDetailClient({ tool, related, faqs }: {
           </h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {related.map(t => (
-              <Link key={t.slug} href={`/tools/${t.slug}/`} style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '12px 16px', background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: '12px', textDecoration: 'none', transition: 'border-color .15s' }}>
+              <Link key={t.slug} href={`/tools/${t.slug}/`} style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '12px 16px', background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: '12px', textDecoration: 'none' }}>
                 <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--color-background-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
                   <ToolIcon slug={t.slug} emoji={t.logo} name={t.name} size={28} />
                 </div>
@@ -354,10 +305,7 @@ export default function ToolDetailClient({ tool, related, faqs }: {
         </div>
       )}
 
-      {/* ── 广告位 C（底部）── */}
       <AdSlot id="ad-tool-bottom" style={{ marginBottom: '28px' }} />
-
-      {/* ── 用户评论 ── */}
       <CommentSection slug={tool.slug} toolName={tool.name} />
     </div>
   )
