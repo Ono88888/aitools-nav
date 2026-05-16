@@ -23,6 +23,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           rel="stylesheet"
         />
         <link rel="icon" href="/wukong-logo.png" />
+        <meta name="impact-site-verification" content="d3c3df34-581c-4233-8df7-58236cb5fba5" />
       </head>
       <body>
         {/* ── 全局导航（首页会在自身内容里覆盖这个） ── */}
