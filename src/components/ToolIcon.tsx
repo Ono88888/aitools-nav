@@ -19,9 +19,9 @@ const EXT: Record<string, string> = {
   gaoding:'ico',
 }
 
-interface Props { slug: string; name: string; size?: number }
+interface Props { slug: string; name: string; emoji?: string; size?: number }
 
-export default function ToolIcon({ slug, name, size = 32 }: Props) {
+export default function ToolIcon({ slug, name, emoji, size = 32 }: Props) {
   const ext = EXT[slug] || 'png'
   const [failed, setFailed] = useState(false)
   const r = Math.round(size * 0.18)
