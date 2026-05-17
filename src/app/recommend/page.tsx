@@ -40,6 +40,42 @@ const TIER_META: Record<string, { label: string; accent: string; tagBg: string; 
   pro:  { label: '创意旗舰',   accent: '#7C3AED', tagBg: '#EDE9FE', tagColor: '#4C1D95', darkTagBg: '#3C3489' },
 }
 
+
+const NET_META = {
+  cn:   { label: '国内直连', dot: '#22c55e', bg: '#f0fdf4', color: '#166534' },
+  vpn:  { label: '需要梯子', dot: '#f59e0b', bg: '#fffbeb', color: '#92400e' },
+  both: { label: '均可访问', dot: '#3b82f6', bg: '#eff6ff', color: '#1e40af' },
+} as const
+
+const DIFF_LABELS: Record<number, { label: string; color: string }> = {
+  1: { label: '极简', color: '#16a34a' },
+  2: { label: '简单', color: '#65a30d' },
+  3: { label: '中等', color: '#d97706' },
+  4: { label: '较难', color: '#ea580c' },
+  5: { label: '专业', color: '#dc2626' },
+}
+
+function NetBadge({ net }: { net: 'cn'|'vpn'|'both' }) {
+  const m = NET_META[net] || NET_META.both
+  return (
+    <span style={{ display:'inline-flex', alignItems:'center', gap:3, fontSize:10, fontWeight:500, background:m.bg, color:m.color, padding:'1px 6px', borderRadius:4 }}>
+      <span style={{ width:5,height:5,borderRadius:'50%',background:m.dot,display:'inline-block',flexShrink:0 }}/>
+      {m.label}
+    </span>
+  )
+}
+
+function DiffDots({ level }: { level: number }) {
+  const color = DIFF_LABELS[level]?.color || '#d97706'
+  return (
+    <span style={{ display:'inline-flex', gap:2 }}>
+      {[1,2,3,4,5].map(i => (
+        <span key={i} style={{ width:6,height:6,borderRadius:'50%',display:'inline-block', background: i<=level ? color : 'var(--color-border-secondary)' }}/>
+      ))}
+    </span>
+  )
+}
+
 // ── 场景匹配（从 combos-data.ts 导入）─────────────────────
 
 // ── 加载动效 ─────────────────────────────────────────────
@@ -152,7 +188,19 @@ function ComboCard({ combo, defaultOpen, index, scene }: { combo: any; defaultOp
             <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--color-text-primary)' }}>{combo.name}</span>
             <span style={{ fontSize: '10px', fontWeight: 500, background: m.tagBg, color: m.tagColor, padding: '2px 8px', borderRadius: '4px' }}>{m.label}</span>
           </div>
-          <p style={{ fontSize: '12px', color: 'var(--color-text-tertiary)', margin: 0 }}>{combo.tagline}</p>
+          <p style={{ fontSize: '12px', color: 'var(--color-text-tertiary)', margin: '0 0 4px' }}>{combo.tagline}</p>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
+            {'netSummary' in combo && <NetBadge net={(combo as any).netSummary} />}
+            {'overallDifficulty' in combo && (
+              <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:10, color:'var(--color-text-tertiary)' }}>
+                难度：<DiffDots level={(combo as any).overallDifficulty} />
+                <span style={{ color: DIFF_LABELS[(combo as any).overallDifficulty]?.color, fontWeight:500 }}>{DIFF_LABELS[(combo as any).overallDifficulty]?.label}</span>
+              </span>
+            )}
+            {'setupTime' in combo && (combo as any).setupTime && (
+              <span style={{ fontSize:10, color:'var(--color-text-tertiary)' }}>⏱ 配置{(combo as any).setupTime}</span>
+            )}
+          </div>
         </div>
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
           <div style={{ fontSize: '16px', fontWeight: 500, color: 'var(--color-text-primary)' }}>

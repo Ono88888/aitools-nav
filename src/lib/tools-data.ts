@@ -1,5 +1,21 @@
 // ── 完整AI工具数据库（80+工具，12大分类）────────────────────
 
+export interface PricePlanSimple {
+  name: string      // '免费版' | 'Pro版' | 'Team版'
+  price: string     // '0' | '$20' | '¥99'
+  period: string    // '/月' | '/年' | '一次性'
+  features: string[]
+  highlight?: boolean
+}
+
+export interface TutorialVideo {
+  title: string
+  url: string
+  platform: 'bilibili' | 'youtube'
+  duration?: string   // '10分钟'
+  level: 'beginner' | 'advanced'
+}
+
 export interface Tool {
   slug: string
   name: string
@@ -10,17 +26,24 @@ export interface Tool {
   desc: string
   price: string
   priceDetail: string
+  pricePlans?: PricePlanSimple[]   // 结构化定价
   hasFree: boolean
   hasApi: boolean
-  cnAccess: boolean   // 国内直接访问
+  cnAccess: boolean
+  difficulty?: 1|2|3|4|5          // 上手难度（可选，默认2）
   rating: number
+  ratingCount?: number             // 评分人数
   url: string
   affiliateUrl?: string
   tags: string[]
-  features: string[]  // 核心功能点
+  features: string[]
   pros: string[]
   cons: string[]
-  bestFor: string     // 最适合人群
+  bestFor: string
+  tutorials?: TutorialVideo[]      // 入门教程视频
+  useCases?: string[]              // 典型使用场景
+  compareWith?: string[]           // 常见竞品slug
+  updatedAt?: string               // 数据更新时间
 }
 
 export const ALL_TOOLS: Tool[] = [
