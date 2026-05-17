@@ -129,6 +129,7 @@ export default function HomePage() {
   const [network, setNetwork]       = useState('all') // all | cn | intl
   const lastSearchRef               = useRef<number>(0)
   const cooldownTimer               = useRef<ReturnType<typeof setInterval>>()
+  const textareaRef                 = useRef<HTMLTextAreaElement>(null)
   const router = useRouter()
   const t = I18N[lang]
   const chars = query.length
@@ -242,10 +243,10 @@ export default function HomePage() {
             <WukongLogo size={80} />
           </div>
           <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: 'clamp(26px,5vw,40px)', fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: '10px', letterSpacing: '-.02em', lineHeight: 1.2 }}>
-            GO悟空 AI 导航
+            {t.title}
           </h1>
           <p style={{ fontSize: '15px', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
-            告诉我你想做什么，我帮你找到最佳 AI 工具组合
+            {t.subtitle}
           </p>
         </div>
 
@@ -279,6 +280,7 @@ export default function HomePage() {
               </div>
             </div>
             <textarea
+              ref={textareaRef}
               value={query}
               onChange={e => { if (e.target.value.length <= MAX_CHARS + 5) setQuery(e.target.value) }}
               onKeyDown={handleKey}
@@ -302,7 +304,7 @@ export default function HomePage() {
                 </span>
                 {chars > 0 && (
                   <button onClick={() => setQuery('')} style={{ fontSize: '12px', color: 'var(--color-text-tertiary)', background: 'none', border: 'none', cursor: 'pointer', padding: '0', fontFamily: 'var(--font-sans)' }}>
-                    清空
+                    {lang === 'zh' ? '清空' : 'Clear'}
                   </button>
                 )}
               </div>
@@ -333,7 +335,7 @@ export default function HomePage() {
           </div>
           {chars > MAX_CHARS && (
             <p style={{ fontSize: '12px', color: '#E24B4A', marginTop: '6px', paddingLeft: '4px' }}>
-              超出字数限制 {chars - MAX_CHARS} 字，请精简描述
+              {lang === 'zh' ? `超出字数限制 ${chars - MAX_CHARS} 字，请精简描述` : `${chars - MAX_CHARS} chars over limit`}
             </p>
           )}
 
@@ -348,9 +350,9 @@ export default function HomePage() {
             }}
               onClick={() => { setQuery(suggestion); setSuggestion('') }}
             >
-              <span style={{ fontSize: '11px', color: 'var(--color-text-tertiary)', flexShrink: 0 }}>💡 你是否想做：</span>
+              <span style={{ fontSize: '11px', color: 'var(--color-text-tertiary)', flexShrink: 0 }}>{lang === 'zh' ? '💡 你是否想做：' : '💡 Did you mean:'}</span>
               <span style={{ fontSize: '12px', color: '#D97706', flex: 1, lineHeight: 1.5 }}>{suggestion}</span>
-              <span style={{ fontSize: '10px', color: 'var(--color-text-tertiary)', flexShrink: 0 }}>点击填入 / Tab</span>
+              <span style={{ fontSize: '10px', color: 'var(--color-text-tertiary)', flexShrink: 0 }}>{lang === 'zh' ? '点击填入 / Tab' : 'Click / Tab'}</span>
             </div>
           )}
         </div>
@@ -358,14 +360,14 @@ export default function HomePage() {
         {/* ── 热门场景标签 ── */}
         <div style={{ width: '100%', maxWidth: '680px', marginBottom: '12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
-            <span style={{ fontSize: '11px', fontWeight: 500, color: 'var(--color-text-tertiary)', textTransform: 'uppercase', letterSpacing: '.06em' }}>🔥 热门场景</span>
+            <span style={{ fontSize: '11px', fontWeight: 500, color: 'var(--color-text-tertiary)', textTransform: 'uppercase', letterSpacing: '.06em' }}>{t.hotLabel}</span>
             <div style={{ flex: 1, height: '0.5px', background: 'var(--color-border-tertiary)' }} />
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
             {t.hotTags.map((tag, i) => (
               <button
                 key={tag.label}
-                onClick={() => { setQuery(tag.value); setFocused(true) }}
+                onClick={() => { setQuery(tag.value); setFocused(true); setTimeout(() => textareaRef.current?.focus(), 0) }}
                 style={{
                   display: 'flex', alignItems: 'center', gap: '5px',
                   fontSize: '13px',
