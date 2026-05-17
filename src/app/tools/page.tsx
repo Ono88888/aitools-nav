@@ -178,7 +178,7 @@ export default function ToolsPage() {
             没有找到相关工具，试试其他关键词
           </div>
         ) : filtered.map(tool => (
-          <a key={tool.slug} href={tool.url} target="_blank" rel="nofollow noopener"
+          <Link key={tool.slug} href={`/tools/${tool.slug}/`}
             style={{
               display: 'flex', alignItems: 'center', gap: '14px',
               padding: '14px 16px',
@@ -228,9 +228,9 @@ export default function ToolsPage() {
               {tool.rating > 0 && (
                 <span style={{ fontSize: '12px', fontWeight: 500, color: '#D97706' }}>★ {tool.rating.toFixed(1)}</span>
               )}
-              <span style={{ fontSize: '16px', color: 'var(--color-text-tertiary)' }}>↗</span>
+              <span style={{ fontSize: '14px', color: 'var(--color-text-tertiary)' }}>→</span>
             </div>
-          </a>
+          </Link>
         ))}
       </div>
     </div>

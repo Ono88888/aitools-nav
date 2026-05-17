@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef, Suspense } from 'react'
+import React, { useEffect, useState, useRef, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import WukongLogo from '@/components/WukongLogo'
@@ -127,12 +127,9 @@ function WukongLoader({ query }: { query: string }) {
 // ── 工具标签 ─────────────────────────────────────────────
 function ToolChip({ tool, accent }: { tool: any; accent: string }) {
   const slug = NAME_TO_SLUG[tool.name]
-  return (
-    <a href={tool.url} target="_blank" rel="nofollow noopener"
-      style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-secondary)', borderRadius: '8px', padding: '5px 10px', textDecoration: 'none', transition: 'border-color .15s, transform .1s', cursor: 'pointer' }}
-      onMouseEnter={e => { e.currentTarget.style.borderColor = accent; e.currentTarget.style.transform = 'translateY(-1px)' }}
-      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border-secondary)'; e.currentTarget.style.transform = 'none' }}
-    >
+  const chipStyle: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-secondary)', borderRadius: '8px', padding: '5px 10px', textDecoration: 'none', transition: 'border-color .15s, transform .1s', cursor: 'pointer' }
+  const inner = (
+    <>
       <div style={{ width: 20, height: 20, borderRadius: 4, overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         {slug
           ? <ToolIcon slug={slug} name={tool.name} size={20} />
@@ -141,7 +138,23 @@ function ToolChip({ tool, accent }: { tool: any; accent: string }) {
       </div>
       <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--color-text-primary)' }}>{tool.name}</span>
       <span style={{ fontSize: '10px', color: 'var(--color-text-tertiary)' }}>{tool.price}</span>
-      <span style={{ fontSize: '10px', color: accent }}>↗</span>
+      <span style={{ fontSize: '10px', color: accent }}>{slug ? '→' : '↗'}</span>
+    </>
+  )
+  if (slug) {
+    return (
+      <Link href={`/tools/${slug}/`} style={chipStyle}
+        onMouseEnter={e => { e.currentTarget.style.borderColor = accent; e.currentTarget.style.transform = 'translateY(-1px)' }}
+        onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border-secondary)'; e.currentTarget.style.transform = 'none' }}>
+        {inner}
+      </Link>
+    )
+  }
+  return (
+    <a href={tool.url} target="_blank" rel="nofollow noopener" style={chipStyle}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = accent; e.currentTarget.style.transform = 'translateY(-1px)' }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border-secondary)'; e.currentTarget.style.transform = 'none' }}>
+      {inner}
     </a>
   )
 }
