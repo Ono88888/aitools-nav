@@ -239,28 +239,41 @@ function ComparePanel({ tool, onClose }: { tool: any; onClose: () => void }) {
   const colW = `${Math.floor(100 / compareList.length)}%`
 
   // 每列背景色
-  const colBg = (idx: number) => idx === 0 ? '#FFFBF2' : 'var(--color-background-primary)'
+  const colBg = (idx: number) => idx === 0 ? '#FFFBF2' : '#FFFFFF'
   const colBorder = (idx: number) => idx === 0 ? '2px solid #D97706' : '1.5px solid #CBD5E0'
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', flexDirection: 'column', background: 'var(--color-background-primary)', overflow: 'hidden' }}>
+    // 外层：半透明黑色遮罩，点击遮罩可关闭
+    <div
+      style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(2px)' }}
+      onClick={e => e.target === e.currentTarget && onClose()}
+    >
+    {/* 内层：纯白面板，右侧滑入，硬编码背景色不受主题影响 */}
+    <div style={{
+      position: 'absolute', top: 0, right: 0, bottom: 0,
+      width: 'min(96vw, 980px)',
+      display: 'flex', flexDirection: 'column',
+      background: '#FFFFFF',
+      boxShadow: '-8px 0 40px rgba(0,0,0,0.18)',
+      overflow: 'hidden',
+    }}>
 
       {/* 顶部栏 */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1.5px solid #CBD5E0', background: 'var(--color-background-primary)', flexShrink: 0, flexWrap: 'wrap', gap: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1.5px solid #E2E8F0', background: '#FFFFFF', flexShrink: 0, flexWrap: 'wrap', gap: 10 }}>
         <div>
           <h2 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--color-text-primary)', margin: 0 }}>⚖️ 工具对比</h2>
           <p style={{ fontSize: '12px', color: 'var(--color-text-tertiary)', margin: '2px 0 0' }}>以 <strong style={{ color: '#D97706' }}>{tool.name}</strong> 为基准，最多再选3个同类工具</p>
         </div>
-        <button onClick={onClose} style={{ padding: '8px 16px', border: '1.5px solid #CBD5E0', borderRadius: '10px', fontSize: '13px', fontWeight: 500, cursor: 'pointer', background: 'none', fontFamily: 'var(--font-sans)', color: 'var(--color-text-primary)' }}>✕ 关闭</button>
+        <button onClick={onClose} style={{ padding: '8px 16px', border: '1.5px solid #CBD5E0', borderRadius: '10px', fontSize: '13px', fontWeight: 500, cursor: 'pointer', background: '#F8FAFC', fontFamily: 'var(--font-sans)', color: '#374151' }}>✕ 关闭</button>
       </div>
 
       <div style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
 
         {/* 选工具区 */}
-        <div style={{ padding: '16px 20px', borderBottom: '1.5px solid #E2E8F0', flexShrink: 0 }}>
+        <div style={{ padding: '16px 20px', borderBottom: '1.5px solid #E2E8F0', flexShrink: 0, background: '#FFFFFF' }}>
           <div style={{ display: 'flex', gap: 8, marginBottom: 10, alignItems: 'center', flexWrap: 'wrap' }}>
             <input value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="搜索工具名称或分类…" style={{ padding: '7px 12px', fontSize: '12px', border: '1.5px solid #CBD5E0', borderRadius: '8px', background: 'var(--color-background-primary)', color: 'var(--color-text-primary)', fontFamily: 'var(--font-sans)', outline: 'none', width: 200, flexShrink: 0 }} />
+              placeholder="搜索工具名称或分类…" style={{ padding: '7px 12px', fontSize: '12px', border: '1.5px solid #CBD5E0', borderRadius: '8px', background: '#F8FAFC', color: '#1E293B', fontFamily: 'var(--font-sans)', outline: 'none', width: 200, flexShrink: 0 }} />
             <span style={{ fontSize: '11px', color: 'var(--color-text-tertiary)' }}>已选 {selected.length}/3 个</span>
             {selected.length > 0 && <button onClick={() => setSelected([])} style={{ fontSize: '11px', color: '#EF4444', background: 'none', border: '1px solid #FECACA', borderRadius: '6px', padding: '3px 8px', cursor: 'pointer', fontFamily: 'var(--font-sans)' }}>清空选择</button>}
           </div>
@@ -301,16 +314,16 @@ function ComparePanel({ tool, onClose }: { tool: any; onClose: () => void }) {
         {/* ─ 对比表格 ─ */}
         {compareList.length === 1
           ? (
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12, color: 'var(--color-text-tertiary)' }}>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12, color: '#94A3B8', background: '#F8FAFC' }}>
               <div style={{ fontSize: '48px' }}>⚖️</div>
               <p style={{ fontSize: '15px' }}>请从上方选择 1-3 个工具开始对比</p>
             </div>
           )
           : (
-            <div style={{ flex: 1, overflow: 'auto', padding: '20px' }}>
+            <div style={{ flex: 1, overflow: 'auto', padding: '20px', background: '#F8FAFC' }}>
 
               {/* 工具头部名片 */}
-              <div style={{ display: 'grid', gridTemplateColumns: `140px repeat(${compareList.length}, 1fr)`, gap: '8px', marginBottom: '12px', position: 'sticky', top: 0, background: 'var(--color-background-primary)', zIndex: 10, paddingBottom: 8, borderBottom: '1.5px solid #E2E8F0' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: `140px repeat(${compareList.length}, 1fr)`, gap: '8px', marginBottom: '12px', position: 'sticky', top: 0, background: '#F8FAFC', zIndex: 10, paddingBottom: 8, borderBottom: '1.5px solid #E2E8F0' }}>
                 <div />
                 {compareList.map((t, idx) => (
                   <div key={t.slug} style={{ background: colBg(idx), border: colBorder(idx), borderRadius: '12px', padding: '12px', textAlign: 'center' }}>
@@ -331,7 +344,7 @@ function ComparePanel({ tool, onClose }: { tool: any; onClose: () => void }) {
               {COMPARE_METRICS.map((m, mi) => (
                 <div key={m.key} style={{ display: 'grid', gridTemplateColumns: `140px repeat(${compareList.length}, 1fr)`, gap: '8px', marginBottom: '6px', alignItems: 'stretch' }}>
                   {/* 维度标签 */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 8px', background: 'var(--color-background-secondary)', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 8px', background: '#EFF2F7', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
                     <span style={{ fontSize: '14px' }}>{m.icon}</span>
                     <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--color-text-secondary)' }}>{m.label}</span>
                   </div>
@@ -347,7 +360,7 @@ function ComparePanel({ tool, onClose }: { tool: any; onClose: () => void }) {
                         <span style={{
                           fontSize: m.key === 'pros' || m.key === 'cons' || m.key === 'bestFor' ? '11px' : '13px',
                           fontWeight: m.key === 'rating' || m.key === 'price' ? 600 : 400,
-                          color: isTrue ? '#16a34a' : isFalse ? '#dc2626' : good ? '#D97706' : 'var(--color-text-primary)',
+                          color: isTrue ? '#16a34a' : isFalse ? '#dc2626' : good ? '#D97706' : '#1E293B',
                           textAlign: 'center', lineHeight: 1.5, wordBreak: 'break-all',
                         }}>{val}</span>
                       </div>
@@ -361,7 +374,7 @@ function ComparePanel({ tool, onClose }: { tool: any; onClose: () => void }) {
                 <div style={{ display: 'flex', alignItems: 'center', padding: '8px', fontSize: '11px', color: 'var(--color-text-tertiary)' }}>查看详情</div>
                 {compareList.map((t, idx) => (
                   <div key={t.slug} style={{ display: 'flex', gap: 6, flexDirection: 'column' }}>
-                    <Link href={`/tools/${t.slug}/`} onClick={onClose} style={{ display: 'block', textAlign: 'center', fontSize: '12px', fontWeight: 500, padding: '8px', borderRadius: '8px', textDecoration: 'none', background: idx === 0 ? '#FEF3C7' : 'var(--color-background-secondary)', color: idx === 0 ? '#92400E' : 'var(--color-text-secondary)', border: `1.5px solid ${idx === 0 ? '#D97706' : '#CBD5E0'}` }}>
+                    <Link href={`/tools/${t.slug}/`} onClick={onClose} style={{ display: 'block', textAlign: 'center', fontSize: '12px', fontWeight: 500, padding: '8px', borderRadius: '8px', textDecoration: 'none', background: idx === 0 ? '#FEF3C7' : '#F1F5F9', color: idx === 0 ? '#92400E' : '#475569', border: `1.5px solid ${idx === 0 ? '#D97706' : '#CBD5E0'}` }}>
                       {idx === 0 ? '当前页面' : `→ ${t.name}`}
                     </Link>
                     <a href={t.affiliateUrl || t.url} target="_blank" rel="nofollow noopener" style={{ display: 'block', textAlign: 'center', fontSize: '11px', padding: '6px', borderRadius: '8px', textDecoration: 'none', background: '#D97706', color: '#fff' }}>
@@ -375,6 +388,7 @@ function ComparePanel({ tool, onClose }: { tool: any; onClose: () => void }) {
           )
         }
       </div>
+    </div>
     </div>
   )
 }
