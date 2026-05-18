@@ -298,11 +298,14 @@ function RecommendContent() {
   const params = useSearchParams()
   const router = useRouter()
   const query   = params.get('q') || ''
-  const network = params.get('network') || 'all'  // all | cn | intl
+  const network = (params.get('network') || 'all') as 'all' | 'cn' | 'intl'
   const lang    = params.get('lang') || 'zh'
   const [loading, setLoading]         = useState(true)
+  const [loadingMsg, setLoadingMsg]   = useState('AI 正在理解你的需求…')
   const [combos, setCombos]           = useState<any[]>([])
   const [sceneLabels, setSceneLabels] = useState<string[]>([])
+  const [intent, setIntent]           = useState('')
+  const [aiMode, setAiMode]           = useState(false) // 是否用了AI推荐
   const [newQ, setNewQ]               = useState(query)
   const timer = useRef<ReturnType<typeof setTimeout>>()
 
@@ -311,51 +314,101 @@ function RecommendContent() {
     setLoading(true)
     setCombos([])
     setSceneLabels([])
+    setIntent('')
+    setAiMode(false)
 
-    // 本地直接匹配（output:export 静态模式，无需API调用）
-    const MIN_MS = 2000
-    const start = Date.now()
-    const scene = matchScene(query)
-    let result = getCombos(scene)
+    // ── 加载提示轮播 ────────────────────────────────────
+    const msgs = [
+      'AI 正在理解你的需求…',
+      '分析工具库，匹配最合适的组合…',
+      '生成个性化工作流方案…',
+      '整理 Prompt 模板和成本估算…',
+    ]
+    let mi = 0
+    setLoadingMsg(msgs[0])
+    const msgTimer = setInterval(() => {
+      mi = (mi + 1) % msgs.length
+      setLoadingMsg(msgs[mi])
+    }, 1800)
 
-    // 按网络环境过滤工具步骤
-    const CN_DOMAINS = ['doubao.com','deepseek.com','kimi.moonshot.cn','yiyan.baidu.com',
-      'tongyi.aliyun.com','chatglm.cn','metaso.cn','jimeng.jianying.com','yige.baidu.com',
-      'capcut.cn','wps.cn','aippt.cn','coze.cn','feigua.io','xiezuocat.com',
-      'volcengine.com','iflyrec.com','klingai.kuaishou.com','vidu.cn','gaoding.com','wanxiang']
-    const CN_ONLY = ['doubao.com','kimi.moonshot.cn','yiyan.baidu.com','capcut.cn',
-      'aippt.cn','coze.cn','feigua.io','xiezuocat.com','klingai.kuaishou.com','vidu.cn','gaoding.com']
-
-    if (network === 'cn') {
-      result = result.map((combo: any) => ({
-        ...combo,
-        steps: combo.steps.map((step: any) => ({
-          ...step,
-          tools: step.tools.filter((tool: any) => CN_DOMAINS.some(d => tool.url?.includes(d))),
-        })).filter((step: any) => step.tools.length > 0),
-      })).filter((combo: any) => combo.steps.length > 0)
-    } else if (network === 'intl') {
-      result = result.map((combo: any) => ({
-        ...combo,
-        steps: combo.steps.map((step: any) => ({
-          ...step,
-          tools: step.tools.filter((tool: any) => !CN_ONLY.some(d => tool.url?.includes(d))),
-        })).filter((step: any) => step.tools.length > 0),
-      })).filter((combo: any) => combo.steps.length > 0)
+    // ── 调用 AI 推荐（走 Anthropic API）─────────────────
+    async function fetchAI() {
+      try {
+        const resp = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'claude-sonnet-4-20250514',
+            max_tokens: 4000,
+            system: buildSystemPrompt(network),
+            messages: [{
+              role: 'user',
+              content: `用户需求：${query}\n\n请推荐最合适的AI工具组合。只输出纯JSON，不要markdown代码块，不要任何解释。`
+            }]
+          })
+        })
+        if (!resp.ok) throw new Error(`${resp.status}`)
+        const data = await resp.json()
+        const raw = data.content?.[0]?.text || ''
+        const match = raw.match(/\{[\s\S]*\}/)
+        if (!match) throw new Error('no json')
+        const parsed = JSON.parse(match[0])
+        clearInterval(msgTimer)
+        setAiMode(true)
+        setSceneLabels([parsed.scene || query])
+        setIntent(parsed.intent || '')
+        setCombos(parsed.combos || [])
+        setLoading(false)
+      } catch {
+        // ── 降级到本地关键词匹配 ────────────────────────
+        clearInterval(msgTimer)
+        const scene = matchScene(query)
+        const result = getCombos(scene)
+        setAiMode(false)
+        setSceneLabels([SCENE_LABELS[scene] ?? scene])
+        setCombos(result)
+        setLoading(false)
+      }
     }
 
-    const labels = [SCENE_LABELS[scene] ?? scene]
+    // 最少展示 1.5s 加载动画
+    const start = Date.now()
+    fetchAI().then(() => {
+      const elapsed = Date.now() - start
+      if (elapsed < 1500) {
+        timer.current = setTimeout(() => {}, 1500 - elapsed)
+      }
+    })
 
-    const elapsed = Date.now() - start
-    const delay = Math.max(0, MIN_MS - elapsed)
-    timer.current = setTimeout(() => {
-      setCombos(result)
-      setSceneLabels(labels)
-      setLoading(false)
-    }, delay)
-
-    return () => clearTimeout(timer.current)
+    return () => { clearInterval(msgTimer); clearTimeout(timer.current) }
   }, [query, network])
+
+  // ── 构建系统提示词（含工具目录）────────────────────────
+  function buildSystemPrompt(net: string): string {
+    const { ALL_TOOLS: tools } = require('@/lib/tools-data')
+    const filtered = net === 'cn' ? tools.filter((t: any) => t.cnAccess)
+                   : net === 'intl' ? tools.filter((t: any) => !t.cnAccess)
+                   : tools
+    const catalog = filtered.map((t: any) =>
+      `[${t.slug}] ${t.name}(${t.category}) - ${t.tagline} | ${t.features.slice(0,3).join('/')} | ${t.price} | 国内:${t.cnAccess?'是':'否'}`
+    ).join('\n')
+    const netNote = net === 'cn' ? '仅推荐国内直连工具。' : net === 'intl' ? '用户在海外，推荐最佳工具。' : '兼顾国内外，标注清楚网络要求。'
+
+    return `你是GO悟空AI工具顾问，${netNote}根据用户需求从工具库推荐最合适的工具组合。
+
+工具库（${filtered.length}个）：
+${catalog}
+
+推荐规则：
+1. 深度理解用户需求，不要被字面关键词限制，比如"法律文件修改"要推文档分析/AI写作工具
+2. 推荐2-3套方案：免费方案+付费方案（+专业方案）
+3. 每套方案3-5个步骤，每步说清楚用什么工具做什么
+4. slug必须来自工具库，不得编造
+5. 给出可直接使用的核心Prompt模板
+
+输出纯JSON（无markdown代码块）：
+{"scene":"场景名(≤8字)","intent":"需求解读(≤40字)","combos":[{"id":"ai_1","name":"方案名","tagline":"一句话","tier":"free|mid|pro","priceMin":0,"priceMax":0,"overallDifficulty":2,"netSummary":"cn|vpn|both","setupTime":"30分钟","timePerOutput":"每次30分钟","bestFor":"适合人群","pros":["优点1","优点2"],"why":"推荐理由(≤80字)","steps":[{"phase":"步骤名","conn":"or|and","flowNote":"如何流转","tools":[{"slug":"工具slug","name":"工具名","logo":"emoji","price":"价格","url":"官网","net":"cn|vpn|both","difficulty":2,"tip":"小贴士"}]}],"prompt":"核心Prompt模板（可直接使用）"}]}`
+  }
 
   function go() {
     const q = newQ.trim()
@@ -385,23 +438,38 @@ function RecommendContent() {
         <Link href="/tools/" style={{ fontSize: '12px', color: 'var(--color-text-tertiary)', textDecoration: 'none', flexShrink: 0 }}>工具库</Link>
       </div>
 
-      {loading ? <WukongLoader query={query} /> : (
+      {loading ? (
+        <div style={{ padding: '60px 20px', textAlign: 'center' }}>
+          <div style={{ fontSize: '48px', marginBottom: '16px', animation: 'spin 2s linear infinite', display: 'inline-block' }}>🔮</div>
+          <p style={{ fontSize: '15px', fontWeight: 500, color: 'var(--color-text-primary)', marginBottom: '8px' }}>{loadingMsg}</p>
+          <p style={{ fontSize: '12px', color: 'var(--color-text-tertiary)' }}>正在调用 AI 为「{query}」生成专属方案</p>
+          <style>{`@keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }`}</style>
+        </div>
+      ) : (
         <>
           <div style={{ padding: '14px 0 10px' }}>
+            {/* AI模式 or 本地模式标识 */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+              {aiMode
+                ? <span style={{ fontSize: '11px', fontWeight: 600, background: '#EDE9FE', color: '#5B21B6', padding: '2px 8px', borderRadius: '20px', border: '1px solid #C4B5FD' }}>✨ AI智能推荐</span>
+                : <span style={{ fontSize: '11px', fontWeight: 500, background: '#FEF3C7', color: '#92400E', padding: '2px 8px', borderRadius: '20px', border: '1px solid #FCD34D' }}>📋 关键词匹配</span>
+              }
+              {sceneLabels.map(l => (
+                <span key={l} style={{ fontSize: '11px', fontWeight: 500, background: '#FEF3C7', color: '#92400E', padding: '2px 8px', borderRadius: '4px' }}>{l}</span>
+              ))}
+            </div>
+            {/* 需求解读 */}
+            {intent && (
+              <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', background: 'var(--color-background-secondary)', padding: '8px 12px', borderRadius: '8px', marginBottom: 8, borderLeft: '3px solid #D97706', lineHeight: 1.6 }}>
+                💡 <strong>需求理解：</strong>{intent}
+              </p>
+            )}
             <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
-              根据「<strong style={{ color: 'var(--color-text-primary)' }}>{query.length > 30 ? query.slice(0, 30) + '...' : query}</strong>」识别为
-              {sceneLabels.length > 0 && (
-                <span style={{ display: 'inline-flex', gap: '4px', margin: '0 4px' }}>
-                  {sceneLabels.map(l => (
-                    <span key={l} style={{ fontSize: '11px', fontWeight: 500, background: '#FEF3C7', color: '#92400E', padding: '1px 7px', borderRadius: '4px' }}>{l}</span>
-                  ))}
-                </span>
-              )}
-              场景，为你匹配了 {combos.length} 套 AI 工具组合：
+              根据「<strong style={{ color: 'var(--color-text-primary)' }}>{query.length > 30 ? query.slice(0, 30) + '...' : query}</strong>」，为你匹配了 <strong style={{ color: '#D97706' }}>{combos.length}</strong> 套 AI 工具组合：
             </p>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '22px', marginTop: '8px' }}>
-            {combos.map((c, i) => <ComboCard key={c.id} combo={c} defaultOpen={i === 0} index={i} scene={matchScene(query)} />)}
+            {combos.map((c, i) => <ComboCard key={c.id} combo={c} defaultOpen={i === 0} index={i} scene={sceneLabels[0] || ''} />)}
           </div>
           {combos.length >= 2 && <PriceBars combos={combos} />}
           <div style={{ marginTop: '20px', padding: '.9rem 1rem', textAlign: 'center', background: 'var(--color-background-secondary)', borderRadius: '12px', border: '0.5px solid var(--color-border-tertiary)' }}>

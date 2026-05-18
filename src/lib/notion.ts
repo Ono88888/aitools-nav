@@ -66,6 +66,9 @@ function parseJson<T>(page: PageObjectResponse, key: string, fallback: T): T {
 
 // ── 将 Notion Page 转换为 Tool 对象 ──────────────────────────
 function pageToTool(page: PageObjectResponse): Tool {
+  const websiteUrl  = getUrl(page, 'websiteUrl')
+  const affiliateUrl = getUrl(page, 'affiliateUrl') || websiteUrl
+
   return {
     slug:           getText(page, 'slug'),
     name:           getText(page, 'name'),
@@ -73,8 +76,9 @@ function pageToTool(page: PageObjectResponse): Tool {
     logo:           getText(page, 'logo'),
     tagline:        getText(page, 'tagline'),
     tags:           getMultiSelect(page, 'tags'),
-    websiteUrl:     getUrl(page, 'websiteUrl'),
-    affiliateUrl:   getUrl(page, 'affiliateUrl') || getUrl(page, 'websiteUrl'),
+    websiteUrl,
+    url:            websiteUrl,        // 与 tools-data.ts 字段名保持一致
+    affiliateUrl,
     category:       getMultiSelect(page, 'category'),
     status:         getSelect(page, 'status') as Tool['status'],
 
@@ -89,19 +93,21 @@ function pageToTool(page: PageObjectResponse): Tool {
     reviewCount:    getNumber(page, 'reviewCount'),
 
     launchDate:     getText(page, 'launchDate'),
-    hasFreeVersion: getCheckbox(page, 'hasFreeVersion'),
+    hasFreeVersion: getCheckbox(page, 'hasFree'),   // Notion字段名是hasFree
+    hasFree:        getCheckbox(page, 'hasFree'),   // tools-data.ts 用 hasFree
     hasApi:         getCheckbox(page, 'hasApi'),
+    cnAccess:       getCheckbox(page, 'cnAccess'),  // tools-data.ts 用 cnAccess
     platforms:      getMultiSelect(page, 'platforms'),
 
     introduction:   getText(page, 'introduction'),
-    scores:         parseJson<ToolScore[]>(page, 'scores', []),
-    pricing:        parseJson<PricePlan[]>(page, 'pricing', []),
-    scenarios:      parseJson<Scenario[]>(page, 'scenarios', []),
+    scores:         parseJson(page, 'scores', []),
+    pricing:        parseJson(page, 'pricing', []),
+    scenarios:      parseJson(page, 'scenarios', []),
     competitors:    getMultiSelect(page, 'competitors'),
-    faq:            parseJson<FaqItem[]>(page, 'faq', []),
+    faq:            parseJson(page, 'faq', []),
     verdict:        getText(page, 'verdict'),
     prosAndCons:    parseJson(page, 'prosAndCons', { pros: [], cons: [] }),
-    similarTools:   parseJson<SimilarTool[]>(page, 'similarTools', []),
+    similarTools:   parseJson(page, 'similarTools', []),
 
     publishedAt:    getDate(page, 'publishedAt'),
     updatedAt:      page.last_edited_time,

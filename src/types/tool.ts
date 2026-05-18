@@ -55,7 +55,8 @@ export interface Tool {
   logo: string           // emoji 或图片 URL
   tagline: string        // 一句话介绍（80字以内）
   tags: string[]         // ["免费可用", "支持中文", "API可用"]
-  websiteUrl: string     // 官网链接（非联盟）
+  websiteUrl: string     // 官网链接（Notion数据源）
+  url: string            // 官网链接（tools-data.ts数据源，与websiteUrl同值）
   affiliateUrl: string   // 联盟链接（rel=sponsored）
   category: string[]     // ["AI对话", "写作助手"]
   status: 'published' | 'draft' | 'archived'
@@ -75,7 +76,9 @@ export interface Tool {
   // ── 工具信息侧边栏
   launchDate: string     // "2023年3月"
   hasFreeVersion: boolean
+  hasFree: boolean       // 与hasFreeVersion同值，兼容tools-data.ts
   hasApi: boolean
+  cnAccess: boolean      // 国内可直接访问
   platforms: string[]    // ["Web", "iOS", "Android"]
 
   // ── 内容区块（Notion 长文本字段）
