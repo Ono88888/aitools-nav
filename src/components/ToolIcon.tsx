@@ -25,7 +25,16 @@ const DOMAIN: Record<string, string> = {
   manus: 'manus.im', coze: 'coze.cn', dify: 'dify.ai',
   fastgpt: 'fastgpt.in', zapier: 'zapier.com', capcut: 'capcut.cn',
   canva: 'canva.com', 'adobe-firefly': 'adobe.com', gaoding: 'gaoding.com',
-  'github-copilot2': 'github.com', runway2: 'runwayml.com',
+  obsidian: 'obsidian.md', vercel: 'vercel.com',
+  supabase: 'supabase.com', shopify: 'shopify.com', klaviyo: 'klaviyo.com',
+  audacity: 'audacityteam.org', 'adobe-audition': 'adobe.com',
+  buzzsprout: 'buzzsprout.com', tidio: 'tidio.com', adcreative: 'adcreative.ai',
+  comfyui: 'github.com', 'beautiful-ai': 'beautiful.ai',
+  'premiere-pro': 'adobe.com', 'davinci-resolve': 'blackmagicdesign.com',
+  yixiaoer: 'yixiaoer.cn', xiaoyuzhou: 'xiaoyuzhoufm.com',
+  yuque: 'yuque.com', 'meitu-ai': 'meitu.com',
+  'tongyi-wanxiang': 'tongyi.aliyun.com', 'markdown-nice': 'mdnice.com',
+  lseditor: '135editor.com', etsy: 'etsy.com', github: 'github.com',
 }
 
 // 品牌色（降级到字母头像时用）
