@@ -68,7 +68,7 @@ const memoryStore = new Map<string, { count: number; resetAt: number }>()
 
 export function rateLimit(params: {
   identifier: string   // IP 或 userId
-  type: 'search' | 'register' | 'login' | 'learn'
+  type: 'search' | 'register' | 'login' | 'learn' | 'favorites' | 'api'
   max: number
   windowSeconds: number
 }): RateLimitResult {
