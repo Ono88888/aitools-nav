@@ -6,6 +6,7 @@ interface HotKey { id: string; label: string; query: string; icon: string; click
 export default function HotkeysPage() {
   const [keys, setKeys] = useState<HotKey[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [editing, setEditing] = useState<HotKey | null>(null)
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState('')
@@ -14,8 +15,14 @@ export default function HotkeysPage() {
 
   async function load() {
     setLoading(true)
-    const r = await fetch('/api/dash/hotkeys').then(r => r.json())
-    setKeys(r.keys || [])
+    setError('')
+    try {
+      const r = await fetch('/api/dash/hotkeys').then(r => r.json())
+      if (r.error) { setError(r.error); setLoading(false); return }
+      setKeys(r.keys || [])
+    } catch(e: any) {
+      setError('网络请求失败: ' + e.message)
+    }
     setLoading(false)
   }
 
@@ -64,6 +71,20 @@ export default function HotkeysPage() {
           <tbody>
             {loading ? (
               <tr><td colSpan={8} style={{ padding: 40, textAlign: 'center', color: '#94A3B8' }}>加载中…</td></tr>
+            ) : error ? (
+              <tr><td colSpan={8} style={{ padding: 30 }}>
+                <div style={{ background: '#FFF5F5', border: '1px solid #FECACA', borderRadius: 10, padding: '16px 18px' }}>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: '#DC2626', margin: '0 0 6px' }}>❌ 加载失败</p>
+                  <p style={{ fontSize: 13, color: '#7F1D1D', margin: '0 0 10px' }}>{error}</p>
+                  <p style={{ fontSize: 12, color: '#94A3B8', margin: 0 }}>
+                    请检查：<br/>
+                    1. Cloudflare Pages 环境变量里是否已设置 <code>NOTION_API_KEY</code><br/>
+                    2. 环境变量里是否已设置 <code>NOTION_HOTKEYS_DB_ID</code><br/>
+                    3. Notion Integration 是否已授权访问该数据库<br/>
+                    4. 设置环境变量后需要重新部署（Retry deployment）
+                  </p>
+                </div>
+              </td></tr>
             ) : keys.sort((a,b) => b.clickCount - a.clickCount).map((k, i) => (
               <tr key={k.id} style={{ borderBottom: '1px solid #F1F5F9', background: i % 2 === 0 ? '#fff' : '#FAFAFA' }}>
                 <td style={{ padding: '10px 14px', fontSize: 13, color: '#64748B' }}>{k.order}</td>
