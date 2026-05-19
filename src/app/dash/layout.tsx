@@ -20,15 +20,27 @@ export default function DashLayout({ children }: { children: React.ReactNode }) 
   const [err, setErr] = useState('')
   const pathname = usePathname()
 
+  // 有效密码列表：
+  // 1. 构建时注入的环境变量（如果有的话）
+  // 2. 硬编码备用密码（防止环境变量未注入时无法登录）
+  const VALID_PWDS = [
+    process.env.NEXT_PUBLIC_DASH_PWD,   // Cloudflare / .env.local 里设置的
+    'Qw63830642',                   // 硬编码备用，部署后务必改掉
+  ].filter(Boolean) as string[]
+
   useEffect(() => {
-    setAuthed(sessionStorage.getItem('dash_auth') === process.env.NEXT_PUBLIC_DASH_PWD || sessionStorage.getItem('dash_auth') === 'ok')
+    const saved = sessionStorage.getItem('dash_auth')
+    setAuthed(saved === 'ok')
   }, [])
 
   function login() {
-    if (pwd === process.env.NEXT_PUBLIC_DASH_PWD || pwd === 'wukong2025admin') {
+    if (VALID_PWDS.includes(pwd)) {
       sessionStorage.setItem('dash_auth', 'ok')
       setAuthed(true)
-    } else setErr('密码错误')
+      setErr('')
+    } else {
+      setErr(`密码错误（当前有效密码数：${VALID_PWDS.length}）`)
+    }
   }
 
   if (authed === null) return <div style={{ padding: 40, textAlign: 'center', color: '#64748B' }}>验证中…</div>
