@@ -7,6 +7,7 @@ const NAV = [
   { href: '/dash', label: '📊 概览', exact: true },
   { href: '/dash/analytics', label: '📈 流量统计' },
   { href: '/dash/hotkeys', label: '🔥 热搜管理' },
+  { href: '/dash/submissions', label: '📬 收录申请' },
   { href: '/dash/combos', label: '🃏 工具组合' },
   { href: '/dash/tools', label: '🔧 工具管理' },
   { href: '/dash/comments', label: '💬 评论建议' },
@@ -25,7 +26,7 @@ export default function DashLayout({ children }: { children: React.ReactNode }) 
   // 2. 硬编码备用密码（防止环境变量未注入时无法登录）
   const VALID_PWDS = [
     process.env.NEXT_PUBLIC_DASH_PWD,   // Cloudflare / .env.local 里设置的
-    'Qw63830642',                   // 硬编码备用，部署后务必改掉
+    'wukong2025admin',                   // 硬编码备用，部署后务必改掉
   ].filter(Boolean) as string[]
 
   useEffect(() => {
