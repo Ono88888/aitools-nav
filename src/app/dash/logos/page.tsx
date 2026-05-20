@@ -1,6 +1,7 @@
 'use client'
 import React, { useState, useRef } from 'react'
 import { ALL_TOOLS } from '@/lib/tools-data'
+import ToolIcon from '@/components/ToolIcon'
 
 // ── 工具Logo展示和管理 ───────────────────────────────────
 // Logo优先级：1.上传的本地文件 2.URL链接 3.Google Favicon 4.品牌色首字母
@@ -14,31 +15,9 @@ interface LogoEntry {
   logo: string                 // emoji备用
 }
 
-function LogoPreview({ slug, name, customUrl, size = 48 }: { slug: string; name: string; customUrl?: string; size?: number }) {
-  const [src, setSrc] = useState(() => {
-    if (customUrl) return customUrl
-    return `https://www.google.com/s2/favicons?domain=${slug}.com&sz=64`
-  })
-  const [failed, setFailed] = useState(false)
-
-  if (failed) {
-    const colors: Record<string, string> = {
-      chatgpt:'#10A37F', claude:'#D97706', gemini:'#4285F4', deepseek:'#1E3A5F',
-      doubao:'#2D5BE3', kimi:'#1A1A2E', midjourney:'#000', cursor:'#000',
-    }
-    const bg = colors[slug] || '#64748B'
-    return (
-      <div style={{ width: size, height: size, borderRadius: size * 0.2, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: size * 0.4, flexShrink: 0 }}>
-        {name[0]?.toUpperCase()}
-      </div>
-    )
-  }
-
-  return (
-    <img src={src} alt={name} width={size} height={size}
-      style={{ width: size, height: size, objectFit: 'contain', borderRadius: size * 0.2 }}
-      onError={() => setFailed(true)} />
-  )
+// 直接复用 ToolIcon，逻辑完全一致：本地文件 → Google Favicon CDN → 品牌色
+function LogoPreview({ slug, name, size = 48 }: { slug: string; name: string; customUrl?: string; size?: number }) {
+  return <ToolIcon slug={slug} name={name} size={size} />
 }
 
 function LogoEditor({ tool, onClose, onSave }: { tool: LogoEntry; onClose: () => void; onSave: (slug: string, url: string, file?: File) => void }) {

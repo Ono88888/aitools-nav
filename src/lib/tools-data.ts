@@ -1301,28 +1301,6 @@ export const ALL_TOOLS: Tool[] = [
     compareWith: ['capcut', 'premiere-pro'],
   },
 
-  {
-    slug: 'yixiaoer', name: '蚁小二', maker: '蚁小二科技', logo: '📱',
-    category: '内容工具', tagline: '国内多平台内容分发，一键同步抖音小红书',
-    desc: '蚁小二是国内专业的多平台内容分发工具，支持一键将内容同步发布到抖音、快手、小红书、微信视频号、B站等主流平台，同时提供内容日历管理和数据统计功能，帮助自媒体提升运营效率。',
-    price: '¥49/月起', priceDetail: '基础版¥49/月，专业版¥99/月，企业版另议',
-    pricePlans: [
-      { name: '基础版', price: '¥49', period: '/月', features: ['5个平台同步', '50次/月发布', '基础数据统计', '内容日历'] },
-      { name: '专业版', price: '¥99', period: '/月', features: ['10个平台同步', '无限次发布', '详细数据分析', '团队协作'], highlight: true },
-    ],
-    hasFree: false, hasApi: false, cnAccess: true, difficulty: 1, rating: 4.0, ratingCount: 380,
-    url: 'https://www.yixiaoer.cn',
-    tags: ['多平台分发', '自媒体', '国内', '内容运营', '自动化'],
-    features: ['10+平台一键分发', '内容日历管理', '数据聚合统计', '定时发布', '素材云存储'],
-    pros: ['国内直连操作简单', '多平台一键同步节省时间', '数据聚合统一管理', '适合国内自媒体'],
-    cons: ['月费对个人较贵', '功能相比海外工具较基础', '海外平台支持不完善', '部分平台需手动授权'],
-    bestFor: '同时运营多个国内社交平台的自媒体创作者',
-    tutorials: [
-      { title: '蚁小二使用教程：一键同步多平台内容', url: 'https://search.bilibili.com/all?keyword=蚁小二使用教程', platform: 'bilibili', duration: '8分钟', level: 'beginner' },
-    ],
-    useCases: ['多平台内容同步', '自媒体矩阵运营', '定时发布内容', '内容数据统一查看', '团队协作发布'],
-    compareWith: ['capcut'],
-  },
 
   {
     slug: 'xiaoyuzhou', name: '小宇宙', maker: '字节跳动', logo: '🎧',
