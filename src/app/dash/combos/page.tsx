@@ -171,6 +171,7 @@ function ComboEditor({ combo, scene, allScenes, onSave, onClose, isNew }: {
     const result: ToolCombo = {
       ...EMPTY_COMBO(),
       ...form,
+      id: (form.id || `c${Date.now()}`),  // 确保id永远是string
       name: form.name!,
       tagline: form.tagline || '',
       tier: form.tier as any || 'mid',
