@@ -8,7 +8,7 @@ function pageToItem(p) {
   return {
     id: p.id,
     toolName: p.properties?.toolName?.title?.[0]?.plain_text ?? '',
-    url: p.properties?.url?.url ?? '',
+    url: p.properties?.['userDefined:url']?.url ?? '',
     reason: p.properties?.reason?.rich_text?.[0]?.plain_text ?? '',
     submitterEmail: p.properties?.submitterEmail?.email ?? '',
     status: p.properties?.status?.select?.name ?? '待审核',

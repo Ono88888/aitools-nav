@@ -64,7 +64,11 @@ export async function onRequest({ request, env }) {
       })
       const d = await res.json()
       if (d.object === 'error') return json({ error: `Notion: ${d.message}`, keys: [] }, 500)
-      return json({ keys: (d.results || []).map(p2k) })
+      const raw = (d.results || []).map(p2k)
+    // 按label去重，保留第一条
+    const seen = new Set()
+    const keys = raw.filter(k => { if(seen.has(k.label)) return false; seen.add(k.label); return true })
+    return json({ keys })
     } catch (e) {
       return json({ error: `请求失败: ${e.message}`, keys: [] }, 500)
     }

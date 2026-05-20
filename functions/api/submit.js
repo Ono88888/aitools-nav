@@ -63,9 +63,7 @@ export async function onRequest({ request, env }) {
           toolName: {
             title: [{ text: { content: String(name).slice(0, 100) } }]
           },
-          url: {
-            url: String(url).slice(0, 500)
-          },
+          'userDefined:url': String(url).slice(0, 500),
           reason: {
             rich_text: [{ text: { content: String(reason || '').slice(0, 500) } }]
           },

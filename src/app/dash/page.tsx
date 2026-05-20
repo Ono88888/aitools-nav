@@ -2,27 +2,29 @@
 import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
 
-function StatCard({ icon, label, value, sub, color = '#D97706', warn = false }: any) {
+function StatCard({ icon, label, value, color = '#D97706' }: any) {
   return (
-    <div style={{ background: '#fff', borderRadius: 14, padding: '18px 20px', border: `1.5px solid ${warn ? '#FECACA' : '#E2E8F0'}`, flex: '1 1 160px', minWidth: 140 }}>
+    <div style={{ background: '#fff', borderRadius: 14, padding: '18px 20px', border: '1.5px solid #E2E8F0', flex: '1 1 140px', minWidth: 130 }}>
       <div style={{ fontSize: 26, marginBottom: 6 }}>{icon}</div>
-      <div style={{ fontSize: 26, fontWeight: 700, color: warn ? '#DC2626' : color, marginBottom: 2 }}>
-        {typeof value === 'string' && value.startsWith('ERR:') ? '⚠️' : value}
-      </div>
+      <div style={{ fontSize: 24, fontWeight: 700, color, marginBottom: 2 }}>{value}</div>
       <div style={{ fontSize: 12, fontWeight: 500, color: '#374151' }}>{label}</div>
-      {sub && <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 2 }}>{sub}</div>}
-      {typeof value === 'string' && value.startsWith('ERR:') && (
-        <div style={{ fontSize: 10, color: '#EF4444', marginTop: 3 }}>Notion连接异常</div>
-      )}
     </div>
   )
 }
 
-function EnvBadge({ label, ok }: { label: string; ok: boolean }) {
+function APIStatusRow({ item }: { item: any }) {
+  const TYPE_ICON: Record<string,string> = { notion: '📋', deepseek: '🐋', ads: '📢' }
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 500, padding: '3px 9px', borderRadius: 20, background: ok ? '#E1F5EE' : '#FFF5F5', color: ok ? '#085041' : '#DC2626', border: `1px solid ${ok ? '#A7F3D0' : '#FECACA'}`, marginRight: 6, marginBottom: 6 }}>
-      {ok ? '✓' : '✗'} {label}
-    </span>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', background: item.ok ? '#F0FDF9' : (item.optional ? '#FFFBEB' : '#FFF5F5'), border: `1px solid ${item.ok ? '#A7F3D0' : (item.optional ? '#FCD34D' : '#FECACA')}`, borderRadius: 10, marginBottom: 6 }}>
+      <span style={{ fontSize: 16 }}>{TYPE_ICON[item.type] || '🔌'}</span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: '#1E293B' }}>{item.name}</div>
+        <div style={{ fontSize: 11, color: '#64748B', marginTop: 1 }}>{item.reason}</div>
+      </div>
+      <span style={{ fontSize: 12, fontWeight: 700, color: item.ok ? '#16a34a' : (item.optional ? '#D97706' : '#DC2626'), flexShrink: 0, padding: '3px 10px', borderRadius: 20, background: item.ok ? '#E1F5EE' : (item.optional ? '#FEF3C7' : '#FFF5F5') }}>
+        {item.ok ? '✓ 正常' : (item.optional ? '~ 未配置' : '✗ 异常')}
+      </span>
+    </div>
   )
 }
 
@@ -36,35 +38,34 @@ export default function DashHome() {
       const d = await fetch('/api/dash/stats').then(r => r.json())
       setStats(d)
       setLastUpdate(new Date().toLocaleTimeString('zh-CN'))
-    } catch {}
+    } catch(e) { console.error(e) }
     setLoading(false)
   }
 
-  useEffect(() => {
-    load()
-    const t = setInterval(load, 60000) // 每分钟自动刷新
-    return () => clearInterval(t)
-  }, [])
+  useEffect(() => { load(); const t = setInterval(load, 60000); return () => clearInterval(t) }, [])
 
-  const env = stats?.envStatus || {}
-  const allEnvOk = env.hasNotionKey && env.hasUserDb && env.hasFavDb && env.hasLearnDb && env.hasHotkeysDb
+  const apiList: any[] = stats?.apiStatus || []
+  const allOk = apiList.filter(a => !a.optional).every(a => a.ok)
+  const errorCount = apiList.filter(a => !a.optional && !a.ok).length
 
   const cards = [
-    { icon: '🔍', label: '今日搜索', value: stats?.todaySearches ?? '…', color: '#D97706' },
     { icon: '👤', label: '注册用户', value: loading ? '…' : stats?.totalUsers, color: '#3B82F6' },
     { icon: '⭐', label: '收藏总数', value: loading ? '…' : stats?.totalFavorites, color: '#8B5CF6' },
-    { icon: '🧠', label: '待审词条', value: loading ? '…' : stats?.pendingLearn, color: '#EF4444', warn: typeof stats?.pendingLearn === 'number' && stats.pendingLearn > 0 },
+    { icon: '🧠', label: '待审词条', value: loading ? '…' : stats?.pendingLearn, color: '#EF4444' },
     { icon: '✅', label: '已学词条', value: loading ? '…' : stats?.approvedKeywords, color: '#10B981' },
-    { icon: '🛠️', label: '工具数量', value: stats?.totalTools ?? 88, color: '#F59E0B' },
+    { icon: '🛠️', label: '工具总数', value: 88, color: '#F59E0B' },
+    { icon: '🃏', label: '组合方案', value: 36, color: '#D97706' },
   ]
 
   const quickLinks = [
     { href: '/dash/hotkeys', label: '🔥 热搜管理', desc: '编辑首页热门场景标签' },
+    { href: '/dash/submissions', label: '📬 收录申请', desc: '审核用户提交的工具' },
     { href: '/dash/comments', label: '💬 用户建议', desc: '查看工具组合用户建议' },
     { href: '/dash/learn', label: '🧠 词库审核', desc: '审核AI学习的新关键词' },
-    { href: '/dash/tools', label: '🔧 工具管理', desc: '查看88个工具详情' },
-    { href: '/dash/combos', label: '🃏 组合管理', desc: '查看36套工具组合' },
-    { href: '/dash/logos', label: '🖼️ Logo管理', desc: '查看/更新工具Logo' },
+    { href: '/dash/tools', label: '🔧 工具管理', desc: '增删改查88个工具' },
+    { href: '/dash/combos', label: '🃏 组合管理', desc: '可视化管理36套组合' },
+    { href: '/dash/logos', label: '🖼️ Logo管理', desc: '编辑工具Logo图片' },
+    { href: '/dash/analytics', label: '📈 搜索排行', desc: '热门搜索词统计' },
   ]
 
   return (
@@ -74,38 +75,44 @@ export default function DashHome() {
           <h1 style={{ fontSize: 22, fontWeight: 700, color: '#1E293B', marginBottom: 2 }}>📊 数据概览</h1>
           <p style={{ fontSize: 12, color: '#94A3B8' }}>GO悟空管理后台 {lastUpdate && `· 最后更新 ${lastUpdate}`}</p>
         </div>
-        <button onClick={load} style={{ padding: '8px 16px', background: '#F1F5F9', border: '1px solid #CBD5E0', borderRadius: 10, fontSize: 12, cursor: 'pointer', fontFamily: 'sans-serif', color: '#475569' }}>
-          🔄 刷新数据
-        </button>
+        <button onClick={load} style={{ padding: '8px 16px', background: '#F1F5F9', border: '1px solid #CBD5E0', borderRadius: 10, fontSize: 12, cursor: 'pointer', fontFamily: 'sans-serif', color: '#475569' }}>🔄 刷新</button>
       </div>
 
-      {/* 环境变量状态 */}
-      <div style={{ background: allEnvOk ? '#F0FDF9' : '#FFF5F5', border: `1px solid ${allEnvOk ? '#6EE7B7' : '#FECACA'}`, borderRadius: 12, padding: '12px 16px', marginBottom: 20 }}>
-        <p style={{ fontSize: 13, fontWeight: 600, color: allEnvOk ? '#065F46' : '#DC2626', margin: '0 0 8px' }}>
-          {allEnvOk ? '✅ 环境变量已全部配置' : '⚠️ 部分环境变量未配置（Cloudflare Pages → Settings → Environment variables）'}
-        </p>
-        <div>
-          <EnvBadge label="NOTION_API_KEY" ok={env.hasNotionKey} />
-          <EnvBadge label="NOTION_USER_DB_ID" ok={env.hasUserDb} />
-          <EnvBadge label="NOTION_FAVORITES_DB_ID" ok={env.hasFavDb} />
-          <EnvBadge label="NOTION_LEARN_DB_ID" ok={env.hasLearnDb} />
-          <EnvBadge label="NOTION_HOTKEYS_DB_ID" ok={env.hasHotkeysDb} />
-        </div>
-        {!allEnvOk && (
-          <p style={{ fontSize: 11, color: '#7F1D1D', margin: '8px 0 0' }}>
-            ⚠️ 未配置的变量会导致对应功能无法使用。配置完成后需点击 Cloudflare 的 Retry deployment 重新部署。
+      {/* API状态总览 */}
+      <div style={{ background: allOk ? '#F0FDF9' : '#FFF5F5', border: `1.5px solid ${allOk ? '#6EE7B7' : '#FECACA'}`, borderRadius: 14, padding: '16px 20px', marginBottom: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+          <p style={{ fontSize: 14, fontWeight: 700, color: allOk ? '#065F46' : '#DC2626', margin: 0 }}>
+            {loading ? '⏳ 检测中…' : allOk ? '✅ 所有 API 连接正常' : `⚠️ ${errorCount} 个 API 连接异常`}
           </p>
+          {!allOk && !loading && (
+            <p style={{ fontSize: 11, color: '#7F1D1D', margin: 0 }}>请检查 Cloudflare 环境变量配置，修改后点击 Retry deployment 重新部署</p>
+          )}
+        </div>
+        {loading ? (
+          <div style={{ color: '#94A3B8', fontSize: 13 }}>正在检测各API状态…</div>
+        ) : (
+          <div>
+            {/* Notion区 */}
+            <p style={{ fontSize: 11, fontWeight: 700, color: '#64748B', marginBottom: 6, marginTop: 0 }}>📋 Notion 数据库</p>
+            {apiList.filter(a => a.type === 'notion').map((item, i) => <APIStatusRow key={i} item={item} />)}
+            {/* DeepSeek区 */}
+            <p style={{ fontSize: 11, fontWeight: 700, color: '#64748B', margin: '12px 0 6px' }}>🤖 AI 推荐 API</p>
+            {apiList.filter(a => a.type === 'deepseek').map((item, i) => <APIStatusRow key={i} item={item} />)}
+            {/* 广告区 */}
+            <p style={{ fontSize: 11, fontWeight: 700, color: '#64748B', margin: '12px 0 6px' }}>📢 广告 API（可选）</p>
+            {apiList.filter(a => a.type === 'ads').map((item, i) => <APIStatusRow key={i} item={item} />)}
+          </div>
         )}
       </div>
 
-      {/* 统计卡片 */}
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 28 }}>
+      {/* 数据统计 */}
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 24 }}>
         {cards.map(c => <StatCard key={c.label} {...c} />)}
       </div>
 
       {/* 快捷入口 */}
       <h2 style={{ fontSize: 14, fontWeight: 600, color: '#374151', marginBottom: 12 }}>快捷操作</h2>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 10 }}>
         {quickLinks.map(l => (
           <Link key={l.href} href={l.href}
             style={{ display: 'block', padding: '14px 16px', background: '#fff', borderRadius: 12, border: '1.5px solid #E2E8F0', textDecoration: 'none', transition: 'border-color .15s' }}
