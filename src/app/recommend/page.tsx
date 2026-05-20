@@ -304,6 +304,7 @@ function RecommendContent() {
   const [loadingMsg, setLoadingMsg]   = useState('AI 正在理解你的需求…')
   const [combos, setCombos]           = useState<any[]>([])
   const [sceneLabels, setSceneLabels] = useState<string[]>([])
+  const [sceneKey, setSceneKey]       = useState<string>('')
   const [intent, setIntent]           = useState('')
   const [aiMode, setAiMode]           = useState(false) // 是否用了AI推荐
   const [newQ, setNewQ]               = useState(query)
@@ -356,6 +357,9 @@ function RecommendContent() {
         clearInterval(msgTimer)
         setAiMode(true)
         setSceneLabels([parsed.scene || query])
+        // 尝试从标签匹配 key，如果匹配不到则使用 video 作为兜底
+        const matchedKey = Object.entries(SCENE_LABELS).find(([_, label]) => label === parsed.scene)?.[0] || 'video'
+        setSceneKey(matchedKey)
         setIntent(parsed.intent || '')
         setCombos(parsed.combos || [])
         setLoading(false)
@@ -366,6 +370,7 @@ function RecommendContent() {
         const result = getCombos(scene)
         setAiMode(false)
         setSceneLabels([SCENE_LABELS[scene] ?? scene])
+        setSceneKey(scene)
         setCombos(result)
         setLoading(false)
       }
@@ -469,7 +474,7 @@ ${catalog}
             </p>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '22px', marginTop: '8px' }}>
-            {combos.map((c, i) => <ComboCard key={c.id} combo={c} defaultOpen={i === 0} index={i} scene={sceneLabels[0] || ''} />)}
+            {combos.map((c, i) => <ComboCard key={c.id} combo={c} defaultOpen={i === 0} index={i} scene={sceneKey} />)}
           </div>
           {combos.length >= 2 && <PriceBars combos={combos} />}
           <div style={{ marginTop: '20px', padding: '.9rem 1rem', textAlign: 'center', background: 'var(--color-background-secondary)', borderRadius: '12px', border: '0.5px solid var(--color-border-tertiary)' }}>

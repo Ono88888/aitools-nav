@@ -56,19 +56,32 @@ export default function AuthModal({ onClose, onSuccess, defaultTab = 'login' }: 
   return (
     <div style={{
       position: 'fixed', inset: 0,
-      backgroundColor: 'rgba(0,0,0,0.6)',
-      backdropFilter: 'blur(2px)',
+      zIndex: 9999,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      zIndex: 9999, padding: '20px',
-    }}
-      onClick={e => { if (e.target === e.currentTarget) onClose() }}
-    >
+      padding: '20px',
+    }}>
+      {/* 背景遮罩 */}
+      <div 
+        style={{
+          position: 'absolute', inset: 0,
+          backgroundColor: 'rgba(0,0,0,0.75)', // 稍微加深一点
+          backdropFilter: 'blur(4px)',
+        }}
+        onClick={onClose}
+      />
+
+      {/* 弹窗主体 */}
       <div style={{
         backgroundColor: '#FFFFFF',
-        borderRadius: '20px', padding: '28px 28px 24px',
-        width: '100%', maxWidth: '400px',
-        boxShadow: '0 24px 64px rgba(0,0,0,0.3)',
-        position: 'relative', zIndex: 1,
+        borderRadius: '24px',
+        padding: '32px',
+        width: '100%', maxWidth: '420px',
+        maxHeight: '90vh',
+        boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)',
+        position: 'relative',
+        zIndex: 10,
+        display: 'flex', flexDirection: 'column',
+        overflowY: 'auto',
       }}>
         {/* 标题 */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
