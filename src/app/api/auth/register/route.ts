@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { sanitizeInput, rateLimit, getClientIP, verifyTurnstile } from '@/lib/security'
 import { findUser, createUser } from '@/lib/user-store'
 import { createSession } from '@/lib/session'
+import { trackEvent } from '@/lib/analytics'
 
 // 邮箱格式验证
 const EMAIL_RE = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/
@@ -73,6 +74,14 @@ export async function POST(req: NextRequest) {
     message: '注册成功',
   })
   await createSession(res, { userId: user.id, email: user.email, phone: user.phone })
+
+  // 追踪注册
+  trackEvent({
+    type: 'register',
+    userId: user.email || user.phone,
+    ip,
+    metadata: { method: user.email ? 'email' : 'phone' }
+  }).catch(() => {})
 
   return res
 }

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import ToolIcon from '@/components/ToolIcon'
 import { ALL_TOOLS } from '@/lib/tools-data'
+import { trackClick } from '@/components/AnalyticsProvider'
 
 // ── 广告位 ───────────────────────────────────────────────
 function AdSlot({ id, style }: { id: string; style?: React.CSSProperties }) {
@@ -79,12 +80,14 @@ function CommentSection({ slug, toolName }: { slug: string; toolName: string }) 
     try { localStorage.setItem(`wk_comments_${slug}`, JSON.stringify(updated.slice(0, 100))) } catch {}
     setComments(updated); setText(''); setName(''); setRating(5); setUseCase('')
     setDone(true); setTimeout(() => setDone(false), 3000)
+    trackClick('submit_comment', { slug, toolName, rating })
   }
 
   function markHelpful(id: number) {
     const updated = comments.map(c => c.id === id ? { ...c, helpful: c.helpful + 1 } : c)
     setComments(updated)
     try { localStorage.setItem(`wk_comments_${slug}`, JSON.stringify(updated)) } catch {}
+    trackClick('helpful_comment', { slug, commentId: id })
   }
 
   // 输入框样式：有明显边框，聚焦时变色
@@ -452,8 +455,9 @@ export default function ToolDetailClient({ tool, related, faqs }: Props) {
         <span style={{ color: 'var(--color-text-primary)' }}>{tool.name}</span>
       </nav>
 
-      {/* Hero */}
+      {/*Hero*/}
       <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', marginBottom: 20 }}>
+        {/* ... */}
         <div style={{ width: 64, height: 64, borderRadius: '16px', background: 'var(--color-background-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden', border: '1.5px solid #CBD5E0' }}>
           <ToolIcon slug={tool.slug} name={tool.name} size={46} />
         </div>
@@ -487,15 +491,17 @@ export default function ToolDetailClient({ tool, related, faqs }: Props) {
       {/* 操作按钮 */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
         <a href={tool.affiliateUrl || tool.url} target="_blank" rel="nofollow noopener"
+          onClick={() => trackClick(`visit_website:${tool.slug}`, { name: tool.name })}
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 20px', background: '#D97706', color: '#fff', borderRadius: '10px', fontSize: '14px', fontWeight: 500, textDecoration: 'none' }}>
           访问官网 ↗
         </a>
-        <button onClick={() => setShowCompare(true)}
+        <button onClick={() => { setShowCompare(true); trackClick(`compare_tool:${tool.slug}`); }}
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 16px', background: 'var(--color-background-primary)', color: 'var(--color-text-secondary)', borderRadius: '10px', fontSize: '13px', border: '1.5px solid #CBD5E0', cursor: 'pointer', fontFamily: 'var(--font-sans)', fontWeight: 500 }}>
           ⚖️ 与同类对比
         </button>
         {tool.hasApi && (
           <a href={`${tool.affiliateUrl || tool.url}`} target="_blank" rel="nofollow noopener"
+            onClick={() => trackClick(`api_docs:${tool.slug}`)}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 14px', background: 'var(--color-background-secondary)', color: 'var(--color-text-secondary)', borderRadius: '10px', fontSize: '12px', border: '1.5px solid #CBD5E0', textDecoration: 'none', fontWeight: 500 }}>
             🔌 API文档
           </a>

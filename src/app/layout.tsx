@@ -2,6 +2,8 @@ import type { Metadata } from 'next'
 import './globals.css'
 import SiteHeader from '@/components/SiteHeader'
 import SiteFooter from '@/components/SiteFooter'
+import AnalyticsProvider from '@/components/AnalyticsProvider'
+import { Suspense } from 'react'
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://gowukong.co'
 
@@ -27,6 +29,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="icon" href="/wukong-logo.png" />
       </head>
       <body>
+        <Suspense fallback={null}>
+          <AnalyticsProvider />
+        </Suspense>
         <SiteHeader />
         <main>{children}</main>
         <SiteFooter />

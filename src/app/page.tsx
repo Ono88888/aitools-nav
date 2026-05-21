@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import AuthModal from '@/components/AuthModal'
 import WukongLogo from '@/components/WukongLogo'
+import { trackClick } from '@/components/AnalyticsProvider'
 
 const MAX_CHARS = 50
 
@@ -209,6 +210,7 @@ export default function HomePage() {
     } catch {}
     setLoading(true)
     startCooldown()
+    trackClick('search', { query: q, network, lang })
     router.push(`/recommend?q=${encodeURIComponent(q)}&network=${network}&lang=${lang}`)
   }
 
@@ -365,7 +367,12 @@ export default function HomePage() {
               {t.hotTags.map((tag, i) => (
                 <button
                   key={tag.label}
-                  onClick={() => { setQuery(tag.value); setFocused(true); setTimeout(() => textareaRef.current?.focus(), 0) }}
+                  onClick={() => { 
+                    setQuery(tag.value); 
+                    setFocused(true); 
+                    setTimeout(() => textareaRef.current?.focus(), 0);
+                    trackClick('hot_tag', { label: tag.label });
+                  }}
                   style={{
                     display: 'flex', alignItems: 'center', gap: '5px',
                     fontSize: '13px',
@@ -412,7 +419,11 @@ export default function HomePage() {
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 {recent.map(r => (
-                  <button key={r} onClick={() => { setQuery(r); setFocused(true) }} style={{
+                  <button key={r} onClick={() => { 
+                    setQuery(r); 
+                    setFocused(true);
+                    trackClick('recent_search', { query: r });
+                  }} style={{
                     textAlign: 'left', fontSize: '13px', color: 'var(--color-text-secondary)',
                     background: 'none', border: 'none', cursor: 'pointer',
                     padding: '5px 8px', borderRadius: '6px',

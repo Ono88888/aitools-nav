@@ -6,6 +6,7 @@ import Link from 'next/link'
 import WukongLogo from '@/components/WukongLogo'
 import ToolIcon from '@/components/ToolIcon'
 import { getCombos, matchScene, SCENE_LABELS } from '@/lib/combos-data'
+import { trackClick } from '@/components/AnalyticsProvider'
 
 // 工具名 → slug 映射（用于 ToolIcon）
 const NAME_TO_SLUG: Record<string, string> = {
@@ -144,6 +145,7 @@ function ToolChip({ tool, accent }: { tool: any; accent: string }) {
   if (slug) {
     return (
       <Link href={`/tools/${slug}/`} style={chipStyle}
+        onClick={() => trackClick(`tool:${slug}`, { name: tool.name })}
         onMouseEnter={e => { e.currentTarget.style.borderColor = accent; e.currentTarget.style.transform = 'translateY(-1px)' }}
         onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border-secondary)'; e.currentTarget.style.transform = 'none' }}>
         {inner}
@@ -152,6 +154,7 @@ function ToolChip({ tool, accent }: { tool: any; accent: string }) {
   }
   return (
     <a href={tool.url} target="_blank" rel="nofollow noopener" style={chipStyle}
+      onClick={() => trackClick(`external_tool:${tool.name}`, { url: tool.url })}
       onMouseEnter={e => { e.currentTarget.style.borderColor = accent; e.currentTarget.style.transform = 'translateY(-1px)' }}
       onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border-secondary)'; e.currentTarget.style.transform = 'none' }}>
       {inner}
@@ -259,7 +262,9 @@ function ComboCard({ combo, defaultOpen, index, scene }: { combo: any; defaultOp
                 <span key={p} style={{ fontSize: '11px', color: 'var(--color-text-secondary)', background: 'var(--color-background-secondary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: '4px', padding: '2px 8px' }}>{p}</span>
               ))}
             </div>
-            <Link href={`/combos/${scene}/${combo.id}/`} style={{ fontSize: '12px', fontWeight: 500, background: combo.isRec ? m.accent : 'transparent', color: combo.isRec ? '#fff' : m.accent, border: `1px solid ${m.accent}`, borderRadius: '8px', padding: '6px 14px', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+            <Link href={`/combos/${scene}/${combo.id}/`} 
+              onClick={() => trackClick(`combo_detail:${combo.id}`, { scene, name: combo.name })}
+              style={{ fontSize: '12px', fontWeight: 500, background: combo.isRec ? m.accent : 'transparent', color: combo.isRec ? '#fff' : m.accent, border: `1px solid ${m.accent}`, borderRadius: '8px', padding: '6px 14px', textDecoration: 'none', whiteSpace: 'nowrap' }}>
               查看完整流程 →
             </Link>
           </div>

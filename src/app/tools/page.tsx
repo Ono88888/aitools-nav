@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { ALL_TOOLS } from '@/lib/tools-data'
 import ToolIcon from '@/components/ToolIcon'
+import { trackClick } from '@/components/AnalyticsProvider'
 
 // ── 工具官网域名映射（用于获取真实favicon）─────────────────────
 const DOMAIN_MAP: Record<string, string> = {
@@ -160,7 +161,7 @@ export default function ToolsPage() {
       {/* 分类标签 */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '24px' }}>
         {ALL_CATS.map(cat => (
-          <button key={cat} onClick={() => setActiveCat(cat)} style={{
+          <button key={cat} onClick={() => { setActiveCat(cat); trackClick('filter_category', { category: cat }); }} style={{
             fontSize: '13px', fontWeight: activeCat === cat ? 500 : 400,
             padding: '6px 14px', borderRadius: '20px', cursor: 'pointer',
             border: activeCat === cat ? '2px solid #D97706' : '1px solid var(--color-border-secondary)',
@@ -179,6 +180,7 @@ export default function ToolsPage() {
           </div>
         ) : filtered.map(tool => (
           <Link key={tool.slug} href={`/tools/${tool.slug}/`}
+            onClick={() => trackClick(`tool_list_click:${tool.slug}`, { name: tool.name })}
             style={{
               display: 'flex', alignItems: 'center', gap: '14px',
               padding: '14px 16px',

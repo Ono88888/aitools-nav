@@ -50,11 +50,11 @@ export default function DashHome() {
 
   const cards = [
     { icon: '👤', label: '注册用户', value: loading ? '…' : stats?.totalUsers, color: '#3B82F6' },
+    { icon: '🖱️', label: '总点击量', value: loading ? '…' : stats?.totalClicks, color: '#F59E0B' },
+    { icon: '👁️', label: '今日访问', value: loading ? '…' : stats?.todaySearches, color: '#10B981' },
     { icon: '⭐', label: '收藏总数', value: loading ? '…' : stats?.totalFavorites, color: '#8B5CF6' },
     { icon: '🧠', label: '待审词条', value: loading ? '…' : stats?.pendingLearn, color: '#EF4444' },
-    { icon: '✅', label: '已学词条', value: loading ? '…' : stats?.approvedKeywords, color: '#10B981' },
     { icon: '🛠️', label: '工具总数', value: 88, color: '#F59E0B' },
-    { icon: '🃏', label: '组合方案', value: 36, color: '#D97706' },
   ]
 
   const quickLinks = [

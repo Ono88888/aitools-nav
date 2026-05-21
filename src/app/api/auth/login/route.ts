@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { sanitizeInput, rateLimit, getClientIP, verifyTurnstile } from '@/lib/security'
 import { findUser, verifyPassword } from '@/lib/user-store'
 import { createSession } from '@/lib/session'
+import { trackEvent } from '@/lib/analytics'
 
 export async function POST(req: NextRequest) {
   // 1. 限流：每IP每小时最多登录20次（防暴力破解）
@@ -56,6 +57,13 @@ export async function POST(req: NextRequest) {
     user: { id: user.id, email: user.email, phone: user.phone },
   })
   await createSession(res, { userId: user.id, email: user.email, phone: user.phone })
+
+  // 追踪登录
+  trackEvent({
+    type: 'login',
+    userId: user.email || user.phone,
+    ip
+  }).catch(() => {})
 
   return res
 }
