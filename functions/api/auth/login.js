@@ -82,7 +82,7 @@ export async function onRequest({ request, env }) {
     const user = await findUser(env, identifier)
     if (!user) {
       await new Promise(r => setTimeout(r, 300))
-      return json({ error: '账号或密码错误' }, 401)
+      return json({ error: '该账号未注册', code: 'USER_NOT_FOUND' }, 401)
     }
     const hash = await sha256(password + user.salt)
     if (hash !== user.passwordHash) {
