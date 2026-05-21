@@ -5,6 +5,11 @@ import { createSession } from '@/lib/session'
 import { trackEvent } from '@/lib/analytics'
 
 export async function POST(req: NextRequest) {
+  // 0. 检查环境变量
+  if (!process.env.NOTION_API_KEY || !process.env.NOTION_USER_DB_ID) {
+    return NextResponse.json({ error: '服务器配置错误（Notion 密钥缺失）' }, { status: 500 })
+  }
+
   // 1. 限流：每IP每小时最多登录20次（防暴力破解）
   const ip = getClientIP(req)
   const limit = rateLimit({ identifier: ip, type: 'login', max: 20, windowSeconds: 3600 })
@@ -31,39 +36,44 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: '请输入账号和密码' }, { status: 400 })
   }
 
-  // 3. 查找用户（统一错误信息，防止账号枚举攻击）
-  const user = await findUser(identifier)
-  if (!user) {
-    // 故意延迟，防止timing attack
-    await new Promise(r => setTimeout(r, 300))
-    return NextResponse.json({ error: '账号或密码错误' }, { status: 401 })
+  try {
+    // 3. 查找用户（统一错误信息，防止账号枚举攻击）
+    const user = await findUser(identifier)
+    if (!user) {
+      // 故意延迟，防止timing attack
+      await new Promise(r => setTimeout(r, 300))
+      return NextResponse.json({ error: '账号或密码错误' }, { status: 401 })
+    }
+
+    // 4. 验证密码
+    const ok = await verifyPassword(rawPwd, user.passwordHash, user.salt)
+    if (!ok) {
+      await new Promise(r => setTimeout(r, 300))
+      return NextResponse.json({ error: '账号或密码错误' }, { status: 401 })
+    }
+
+    // 5. 检查封禁状态
+    if (user.status === 'banned') {
+      return NextResponse.json({ error: '该账号已被封禁，请联系客服' }, { status: 403 })
+    }
+
+    // 6. 写入session cookie
+    const res = NextResponse.json({
+      success: true,
+      user: { id: user.id, email: user.email, phone: user.phone },
+    })
+    await createSession(res, { userId: user.id, email: user.email, phone: user.phone })
+
+    // 追踪登录
+    trackEvent({
+      type: 'login',
+      userId: user.email || user.phone,
+      ip
+    }).catch(() => {})
+
+    return res
+  } catch (err: any) {
+    console.error('Login error:', err)
+    return NextResponse.json({ error: `服务器内部错误: ${err.message}` }, { status: 500 })
   }
-
-  // 4. 验证密码
-  const ok = await verifyPassword(rawPwd, user.passwordHash, user.salt)
-  if (!ok) {
-    await new Promise(r => setTimeout(r, 300))
-    return NextResponse.json({ error: '账号或密码错误' }, { status: 401 })
-  }
-
-  // 5. 检查封禁状态
-  if (user.status === 'banned') {
-    return NextResponse.json({ error: '该账号已被封禁，请联系客服' }, { status: 403 })
-  }
-
-  // 6. 写入session cookie
-  const res = NextResponse.json({
-    success: true,
-    user: { id: user.id, email: user.email, phone: user.phone },
-  })
-  await createSession(res, { userId: user.id, email: user.email, phone: user.phone })
-
-  // 追踪登录
-  trackEvent({
-    type: 'login',
-    userId: user.email || user.phone,
-    ip
-  }).catch(() => {})
-
-  return res
 }

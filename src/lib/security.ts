@@ -115,10 +115,15 @@ export function getClientIP(req: Request): string {
 export async function verifyTurnstile(token: string, ip?: string): Promise<boolean> {
   const secret = process.env.TURNSTILE_SECRET_KEY
   if (!secret) {
-    console.warn('TURNSTILE_SECRET_KEY not set, skipping verification')
-    return true // 开发环境如果没配，先跳过
+    console.error('CRITICAL: TURNSTILE_SECRET_KEY is not set in environment variables.')
+    // 为了防止在配置未完成时完全锁死，如果是开发环境可以跳过，但生产环境必须报错
+    if (process.env.NODE_ENV === 'development') return true
+    throw new Error('服务器安全配置错误 (Turnstile Secret Missing)')
   }
-  if (!token) return false
+  if (!token) {
+    console.warn('Turnstile verification failed: No token provided.')
+    return false
+  }
 
   try {
     const formData = new FormData()

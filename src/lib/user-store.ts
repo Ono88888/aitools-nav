@@ -8,6 +8,10 @@ const NOTION_API = 'https://api.notion.com/v1'
 const TOKEN = process.env.NOTION_API_KEY!
 const USER_DB = process.env.NOTION_USER_DB_ID!   // 需新建用户数据库
 
+if (!TOKEN || !USER_DB) {
+  console.error('CRITICAL: NOTION_API_KEY or NOTION_USER_DB_ID is missing in environment variables.')
+}
+
 // ── Notion请求封装 ────────────────────────────────────────────
 async function notionRequest(path: string, method = 'GET', body?: object) {
   const res = await fetch(`${NOTION_API}${path}`, {

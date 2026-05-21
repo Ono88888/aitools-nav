@@ -88,7 +88,12 @@ export default function AuthModal({ onClose, onSuccess, defaultTab = 'login' }: 
         })
       })
 
-      const data = await res.json()
+      let data
+      try {
+        data = await res.json()
+      } catch (e) {
+        throw new Error('服务器响应格式错误')
+      }
       
       if (!res.ok) {
         setError(data.error || '操作失败，请重试')
@@ -101,8 +106,9 @@ export default function AuthModal({ onClose, onSuccess, defaultTab = 'login' }: 
       // 保存到localStorage（仅用于前端展示，敏感操作需后端session）
       localStorage.setItem('wk_user', JSON.stringify(user))
       onSuccess(user)
-    } catch (err) {
-      setError('网络请求失败，请稍后重试')
+    } catch (err: any) {
+      console.error('Auth error:', err)
+      setError(err.message === '服务器响应格式错误' ? '服务器响应异常，请联系管理员' : '网络请求失败，请稍后重试')
       resetTurnstile()
     } finally {
       setLoading(false)
@@ -234,14 +240,19 @@ export default function AuthModal({ onClose, onSuccess, defaultTab = 'login' }: 
         )}
 
         {/* 提交按钮 */}
-        <button onClick={submit} disabled={loading} style={{
-          width: '100%', marginTop: '16px', padding: '12px',
-          background: loading ? 'var(--color-background-secondary)' : accent,
-          color: loading ? 'var(--color-text-tertiary)' : '#fff',
-          border: 'none', borderRadius: '12px', fontSize: '14px', fontWeight: 500,
-          cursor: loading ? 'default' : 'pointer', fontFamily: 'var(--font-sans)',
-          transition: 'all .2s',
-        }}>
+        <button 
+          onClick={submit} 
+          disabled={loading || (!!SITE_KEY && !captchaToken)} 
+          style={{
+            width: '100%', marginTop: '16px', padding: '12px',
+            background: (loading || (!!SITE_KEY && !captchaToken)) ? '#E5E7EB' : accent,
+            color: (loading || (!!SITE_KEY && !captchaToken)) ? '#9CA3AF' : '#fff',
+            border: 'none', borderRadius: '12px', fontSize: '14px', fontWeight: 500,
+            cursor: (loading || (!!SITE_KEY && !captchaToken)) ? 'not-allowed' : 'pointer', 
+            fontFamily: 'var(--font-sans)',
+            transition: 'all .2s',
+          }}
+        >
           {loading ? '处理中...' : (tab === 'login' ? '登录' : '注册并登录')}
         </button>
 

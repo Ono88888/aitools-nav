@@ -12,6 +12,11 @@ const PHONE_RE = /^1[3-9]\d{9}$/
 const PWD_RE = /^(?=.*[a-zA-Z])(?=.*\d).{8,32}$/
 
 export async function POST(req: NextRequest) {
+  // 0. 检查环境变量
+  if (!process.env.NOTION_API_KEY || !process.env.NOTION_USER_DB_ID) {
+    return NextResponse.json({ error: '服务器配置错误（Notion 密钥缺失）' }, { status: 500 })
+  }
+
   // 1. 限流：每IP每小时最多注册5次
   const ip = getClientIP(req)
   const limit = rateLimit({ identifier: ip, type: 'register', max: 5, windowSeconds: 3600 })
@@ -54,34 +59,39 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: '密码需8-32位，包含字母和数字' }, { status: 400 })
   }
 
-  // 6. 检查是否已注册
-  const existing = await findUser(identifier)
-  if (existing) {
-    return NextResponse.json({ error: '该账号已注册，请直接登录' }, { status: 409 })
+  try {
+    // 6. 检查是否已注册
+    const existing = await findUser(identifier)
+    if (existing) {
+      return NextResponse.json({ error: '该账号已注册，请直接登录' }, { status: 409 })
+    }
+
+    // 7. 创建用户
+    const user = await createUser({
+      email: isEmail ? identifier : undefined,
+      phone: isPhone ? identifier : undefined,
+      password: rawPassword,
+    })
+
+    // 8. 自动登录（写入session cookie）
+    const res = NextResponse.json({
+      success: true,
+      user: { id: user.id, email: user.email, phone: user.phone },
+      message: '注册成功',
+    })
+    await createSession(res, { userId: user.id, email: user.email, phone: user.phone })
+
+    // 追踪注册
+    trackEvent({
+      type: 'register',
+      userId: user.email || user.phone,
+      ip,
+      metadata: { method: user.email ? 'email' : 'phone' }
+    }).catch(() => {})
+
+    return res
+  } catch (err: any) {
+    console.error('Register error:', err)
+    return NextResponse.json({ error: `服务器内部错误: ${err.message}` }, { status: 500 })
   }
-
-  // 7. 创建用户
-  const user = await createUser({
-    email: isEmail ? identifier : undefined,
-    phone: isPhone ? identifier : undefined,
-    password: rawPassword,
-  })
-
-  // 8. 自动登录（写入session cookie）
-  const res = NextResponse.json({
-    success: true,
-    user: { id: user.id, email: user.email, phone: user.phone },
-    message: '注册成功',
-  })
-  await createSession(res, { userId: user.id, email: user.email, phone: user.phone })
-
-  // 追踪注册
-  trackEvent({
-    type: 'register',
-    userId: user.email || user.phone,
-    ip,
-    metadata: { method: user.email ? 'email' : 'phone' }
-  }).catch(() => {})
-
-  return res
 }
