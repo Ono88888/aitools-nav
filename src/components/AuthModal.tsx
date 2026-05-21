@@ -1,11 +1,18 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import WukongLogo from '@/components/WukongLogo'
+import Script from 'next/script'
 
 interface Props {
   onClose: () => void
   onSuccess: (user: { email: string; phone: string }) => void
   defaultTab?: 'login' | 'register'
+}
+
+declare global {
+  interface Window {
+    turnstile: any
+  }
 }
 
 export default function AuthModal({ onClose, onSuccess, defaultTab = 'login' }: Props) {
@@ -15,29 +22,88 @@ export default function AuthModal({ onClose, onSuccess, defaultTab = 'login' }: 
   const [loading, setLoading]     = useState(false)
   const [error, setError]         = useState('')
   const [showPwd, setShowPwd]     = useState(false)
+  const [captchaToken, setToken]  = useState('')
+  const turnstileRef              = useRef<HTMLDivElement>(null)
+  const widgetId                  = useRef<string | null>(null)
+
+  const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
+
+  // 重置 Turnstile
+  const resetTurnstile = () => {
+    if (window.turnstile && widgetId.current) {
+      window.turnstile.reset(widgetId.current)
+      setToken('')
+    }
+  }
+
+  // 渲染 Turnstile
+  useEffect(() => {
+    if (!SITE_KEY) return
+    
+    const timer = setInterval(() => {
+      if (window.turnstile && turnstileRef.current && !widgetId.current) {
+        widgetId.current = window.turnstile.render(turnstileRef.current, {
+          sitekey: SITE_KEY,
+          callback: (token: string) => setToken(token),
+          'error-callback': () => setError('人机验证加载失败，请刷新页面'),
+          theme: 'light',
+        })
+        clearInterval(timer)
+      }
+    }, 500)
+
+    return () => {
+      clearInterval(timer)
+      if (window.turnstile && widgetId.current) {
+        // window.turnstile.remove(widgetId.current) // 某些情况下 remove 会导致问题，reset 即可
+      }
+    }
+  }, [SITE_KEY, tab]) // tab 切换时也尝试重新渲染或确保存在
 
   async function submit() {
     setError('')
     if (!identifier.trim() || !password.trim()) { setError('请填写完整信息'); return }
+    
     // 基础格式验证
     const isEmail = identifier.includes('@')
     const isPhone = /^1[3-9]\d{9}$/.test(identifier.trim())
     if (!isEmail && !isPhone) { setError('请输入有效的邮箱或手机号'); return }
     if (password.length < 8) { setError('密码至少8位'); return }
 
+    if (SITE_KEY && !captchaToken) {
+      setError('请先完成人机验证')
+      return
+    }
+
     setLoading(true)
     try {
-      // 模拟注册/登录（前端演示版，后端功能即将上线）
-      await new Promise(r => setTimeout(r, 800))
-      const user = {
-        email: isEmail ? identifier.trim() : '',
-        phone: isPhone ? identifier.trim() : '',
+      const endpoint = tab === 'login' ? '/api/auth/login' : '/api/auth/register'
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          identifier: identifier.trim(),
+          password: password,
+          captchaToken: captchaToken
+        })
+      })
+
+      const data = await res.json()
+      
+      if (!res.ok) {
+        setError(data.error || '操作失败，请重试')
+        resetTurnstile() // 失败时重置验证码
+        return
       }
-      // 保存到localStorage
+
+      // 登录成功
+      const user = data.user
+      // 保存到localStorage（仅用于前端展示，敏感操作需后端session）
       localStorage.setItem('wk_user', JSON.stringify(user))
       onSuccess(user)
-    } catch {
-      setError('操作失败，请重试')
+    } catch (err) {
+      setError('网络请求失败，请稍后重试')
+      resetTurnstile()
     } finally {
       setLoading(false)
     }
@@ -60,6 +126,8 @@ export default function AuthModal({ onClose, onSuccess, defaultTab = 'login' }: 
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: '20px',
     }}>
+      <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" strategy="lazyOnload" />
+      
       {/* 背景遮罩 */}
       <div 
         style={{
@@ -100,7 +168,7 @@ export default function AuthModal({ onClose, onSuccess, defaultTab = 'login' }: 
         {/* Tab切换 */}
         <div style={{ display: 'flex', background: '#F3F4F6', borderRadius: '10px', padding: '3px', marginBottom: '20px' }}>
           {(['login','register'] as const).map(t => (
-            <button key={t} onClick={() => { setTab(t); setError('') }} style={{
+            <button key={t} onClick={() => { setTab(t); setError(''); setToken(''); resetTurnstile() }} style={{
               flex: 1, padding: '7px', fontSize: '13px', fontWeight: 500,
               border: 'none', borderRadius: '8px', cursor: 'pointer',
               fontFamily: 'var(--font-sans)',
@@ -115,7 +183,7 @@ export default function AuthModal({ onClose, onSuccess, defaultTab = 'login' }: 
         </div>
 
         {/* 表单 */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div>
             <label style={{ fontSize: '12px', color: '#6B7280', display: 'block', marginBottom: '5px' }}>
               邮箱或手机号
@@ -149,6 +217,13 @@ export default function AuthModal({ onClose, onSuccess, defaultTab = 'login' }: 
               </button>
             </div>
           </div>
+
+          {/* Turnstile 容器 */}
+          {SITE_KEY && (
+            <div style={{ marginTop: 4, minHeight: 65, display: 'flex', justifyContent: 'center' }}>
+              <div ref={turnstileRef}></div>
+            </div>
+          )}
         </div>
 
         {/* 错误提示 */}

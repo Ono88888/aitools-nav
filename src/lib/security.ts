@@ -110,7 +110,36 @@ export function getClientIP(req: Request): string {
 }
 
 // ────────────────────────────────────────────────────────────
-// 5. 简单 CSRF token 生成/验证（用于表单提交）
+// 5. Cloudflare Turnstile (CAPTCHA) 验证
+// ────────────────────────────────────────────────────────────
+export async function verifyTurnstile(token: string, ip?: string): Promise<boolean> {
+  const secret = process.env.TURNSTILE_SECRET_KEY
+  if (!secret) {
+    console.warn('TURNSTILE_SECRET_KEY not set, skipping verification')
+    return true // 开发环境如果没配，先跳过
+  }
+  if (!token) return false
+
+  try {
+    const formData = new FormData()
+    formData.append('secret', secret)
+    formData.append('response', token)
+    if (ip) formData.append('remoteip', ip)
+
+    const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      body: formData,
+    })
+    const data = await res.json()
+    return !!data.success
+  } catch (err) {
+    console.error('Turnstile verification error:', err)
+    return false
+  }
+}
+
+// ────────────────────────────────────────────────────────────
+// 6. 简单 CSRF token 生成/验证（用于表单提交）
 // ────────────────────────────────────────────────────────────
 export function generateToken(length = 32): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'

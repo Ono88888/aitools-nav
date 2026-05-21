@@ -217,10 +217,11 @@ export default function HomePage() {
     if (e.key === 'Tab' && suggestion) { e.preventDefault(); setQuery(suggestion); setSuggestion('') }
   }
 
-  function handleLogout() {
+  async function handleLogout() {
     setUser(null)
     // 清除本地存储的登录状态
     try { 
+      await fetch('/api/auth/logout', { method: 'POST' })
       localStorage.removeItem('wk_user')
       window.dispatchEvent(new StorageEvent('storage', { key: 'wk_user', newValue: null }))
     } catch {}

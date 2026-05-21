@@ -42,9 +42,10 @@ export default function SiteHeader() {
     } catch {}
   }
 
-  function handleLogout() {
+  async function handleLogout() {
     setUser(null)
     try { 
+      await fetch('/api/auth/logout', { method: 'POST' })
       localStorage.removeItem('wk_user')
       window.dispatchEvent(new StorageEvent('storage', { key: 'wk_user', newValue: null }))
     } catch {}

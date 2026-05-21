@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { sanitizeInput, rateLimit, getClientIP } from '@/lib/security'
+import { sanitizeInput, rateLimit, getClientIP, verifyTurnstile } from '@/lib/security'
 import { findUser, createUser } from '@/lib/user-store'
 import { createSession } from '@/lib/session'
 
@@ -25,14 +25,21 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}))
   const rawIdentifier = String(body.identifier ?? '').trim()   // 邮箱或手机
   const rawPassword   = String(body.password   ?? '').trim()
+  const captchaToken  = String(body.captchaToken ?? '').trim()
 
-  // 3. 输入消毒
+  // 3. 人机验证
+  const isHuman = await verifyTurnstile(captchaToken, ip)
+  if (!isHuman) {
+    return NextResponse.json({ error: '人机验证失败，请重试' }, { status: 403 })
+  }
+
+  // 4. 输入消毒
   const { safe: identifier, blocked } = sanitizeInput(rawIdentifier)
   if (blocked || !identifier) {
     return NextResponse.json({ error: '输入包含非法字符' }, { status: 400 })
   }
 
-  // 4. 格式验证
+  // 5. 格式验证
   const isEmail = identifier.includes('@')
   const isPhone = PHONE_RE.test(identifier)
 
@@ -46,20 +53,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: '密码需8-32位，包含字母和数字' }, { status: 400 })
   }
 
-  // 5. 检查是否已注册
+  // 6. 检查是否已注册
   const existing = await findUser(identifier)
   if (existing) {
     return NextResponse.json({ error: '该账号已注册，请直接登录' }, { status: 409 })
   }
 
-  // 6. 创建用户
+  // 7. 创建用户
   const user = await createUser({
     email: isEmail ? identifier : undefined,
     phone: isPhone ? identifier : undefined,
     password: rawPassword,
   })
 
-  // 7. 自动登录（写入session cookie）
+  // 8. 自动登录（写入session cookie）
   const res = NextResponse.json({
     success: true,
     user: { id: user.id, email: user.email, phone: user.phone },
