@@ -19,6 +19,12 @@ export default function AnalyticsPage() {
         <span style={{ fontSize: 12, color: '#94A3B8' }}>数据来源：Notion Logs & Learn DB</span>
       </div>
 
+      {data.error && (
+        <div style={{ marginBottom: 20, padding: 16, background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: 10, color: '#991B1B', fontSize: 14 }}>
+          ⚠️ 统计数据加载失败: {data.error}。请检查环境变量配置及 Notion 数据库权限。
+        </div>
+      )}
+
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 24 }}>
         
         {/* 1. 热门搜索排行 */}
@@ -31,6 +37,8 @@ export default function AnalyticsPage() {
               <tbody>
                 {loading ? (
                   <tr><td style={{ padding: 20, textAlign: 'center', color: '#94A3B8' }}>加载中…</td></tr>
+                ) : (data.topSearches || []).length === 0 ? (
+                  <tr><td style={{ padding: 20, textAlign: 'center', color: '#94A3B8' }}>暂无搜索记录</td></tr>
                 ) : data.topSearches.map((item: any, i: number) => (
                   <tr key={i} style={{ borderBottom: '1px solid #F1F5F9' }}>
                     <td style={{ padding: '10px 14px', fontSize: 13, fontWeight: 600, color: i < 3 ? '#D97706' : '#94A3B8', width: 30 }}>{i + 1}</td>
@@ -55,6 +63,8 @@ export default function AnalyticsPage() {
               <tbody>
                 {loading ? (
                   <tr><td style={{ padding: 20, textAlign: 'center', color: '#94A3B8' }}>加载中…</td></tr>
+                ) : (data.topClicks || []).length === 0 ? (
+                  <tr><td style={{ padding: 20, textAlign: 'center', color: '#94A3B8' }}>暂无点击记录</td></tr>
                 ) : data.topClicks.map((item: any, i: number) => (
                   <tr key={i} style={{ borderBottom: '1px solid #F1F5F9' }}>
                     <td style={{ padding: '10px 14px', fontSize: 13, fontWeight: 600, color: i < 3 ? '#3B82F6' : '#94A3B8', width: 30 }}>{i + 1}</td>
@@ -85,6 +95,8 @@ export default function AnalyticsPage() {
             <tbody>
               {loading ? (
                 <tr><td colSpan={4} style={{ padding: 20, textAlign: 'center', color: '#94A3B8' }}>加载中…</td></tr>
+              ) : (data.recentVisits || []).length === 0 ? (
+                <tr><td colSpan={4} style={{ padding: 20, textAlign: 'center', color: '#94A3B8' }}>暂无访问记录</td></tr>
               ) : data.recentVisits.map((item: any, i: number) => (
                 <tr key={i} style={{ borderBottom: '1px solid #F1F5F9' }}>
                   <td style={{ padding: '10px 14px', fontSize: 13, color: '#1E293B' }}>

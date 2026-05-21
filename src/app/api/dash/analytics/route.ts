@@ -48,25 +48,27 @@ export async function GET(_req: NextRequest) {
 
       const results = logsData.results || []
       
-      // 统计点击
+      // 统计点击（增加空值保护）
       const clickMap = new Map()
-      results.filter((r: any) => r.properties.Type.select.name === 'click').forEach((r: any) => {
-        const target = r.properties.Target.rich_text[0]?.plain_text || 'Unknown'
-        clickMap.set(target, (clickMap.get(target) || 0) + 1)
-      })
+      results
+        .filter((r: any) => r.properties?.Type?.select?.name === 'click')
+        .forEach((r: any) => {
+          const target = r.properties?.Target?.rich_text?.[0]?.plain_text || 'Unknown'
+          clickMap.set(target, (clickMap.get(target) || 0) + 1)
+        })
       topClicks = Array.from(clickMap.entries())
         .map(([target, count]) => ({ target, count }))
         .sort((a, b) => b.count - a.count)
 
-      // 最近访问
+      // 最近访问（增加空值保护）
       recentVisits = results
-        .filter((r: any) => r.properties.Type.select.name === 'visit')
+        .filter((r: any) => r.properties?.Type?.select?.name === 'visit')
         .slice(0, 10)
         .map((r: any) => ({
-          path: r.properties.Path.rich_text[0]?.plain_text || '/',
-          userId: r.properties.UserId.rich_text[0]?.plain_text || 'Guest',
-          time: r.properties.Timestamp.date.start,
-          ip: r.properties.IP.rich_text[0]?.plain_text || ''
+          path: r.properties?.Path?.rich_text?.[0]?.plain_text || '/',
+          userId: r.properties?.UserId?.rich_text?.[0]?.plain_text || 'Guest',
+          time: r.properties?.Timestamp?.date?.start || new Date().toISOString(),
+          ip: r.properties?.IP?.rich_text?.[0]?.plain_text || ''
         }))
     }
 
